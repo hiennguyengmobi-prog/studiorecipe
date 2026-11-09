@@ -12,6 +12,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    <script src='https://unpkg.com/tesseract.js@v5.1.0/dist/tesseract.min.js'></script>
+
     <!-- Firebase SDKs (Compat version for single HTML execution) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -1130,28 +1132,42 @@
         }
 
         function confirmSaveRecipe() {
-            const name = document.getElementById('modal-recipe-name').value.trim() || 'Custom Recipe';
-            const desc = document.getElementById('modal-recipe-desc').value.trim() || 'Camera Preset';
+            const nameInput = document.getElementById('modal-recipe-name').value.trim();
+            const descInput = document.getElementById('modal-recipe-desc').value.trim();
 
-            const newId = 'custom-' + Date.now();
-            const newRecipe = {
-                ...currentRecipe,
-                id: newId,
-                name: name,
-                sensor: desc
+            // Thu thập trực tiếp các thông số đang chọn thực tế trên giao diện Studio lúc bấm lưu
+            const liveRecipe = {
+                id: 'recipe-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+                name: nameInput || `${document.getElementById('param-brand').value} ${document.getElementById('param-filmSim').value}`,
+                brand: document.getElementById('param-brand').value,
+                sensor: descInput || `${document.getElementById('param-brand').value} Custom Studio`,
+                filmSim: document.getElementById('param-filmSim').value,
+                wbRed: parseInt(document.getElementById('param-wbRed').value),
+                wbBlue: parseInt(document.getElementById('param-wbBlue').value),
+                highlight: parseFloat(document.getElementById('param-highlight').value),
+                shadow: parseFloat(document.getElementById('param-shadow').value),
+                color: parseInt(document.getElementById('param-color').value),
+                grain: document.getElementById('param-grain').value,
+                colorFxBlue: document.getElementById('param-colorFxBlue').value,
+                sharpness: parseInt(document.getElementById('param-sharpness').value),
+                denoise: parseInt(document.getElementById('param-denoise').value)
             };
 
-            recipeLibrary.push(newRecipe);
+            // Đưa vào danh sách thư viện
+            recipeLibrary.push(liveRecipe);
+            currentRecipe = { ...liveRecipe }; // Cập nhật làm preset hiện tại
+
             saveLibraryToLocalStorage();
             populatePresetDropdown();
             renderLibraryGrid();
             closeSaveModal();
 
+            // Đồng bộ lên Firebase Cloud nếu có mạng
             if (isFirebaseActive && db) {
-                db.collection("recipes").doc(newId).set(newRecipe).catch(e => console.log("Cloud save queued offline:", e));
+                db.collection("recipes").doc(liveRecipe.id).set(liveRecipe).catch(e => console.log("Cloud save queued offline:", e));
             }
 
-            loadPresetById(newRecipe.id);
+            loadPresetById(liveRecipe.id);
         }
 
         function createNewBlankRecipe() {
@@ -1182,6 +1198,154 @@
             const loader = document.getElementById('canvas-loader');
             if (show) loader.classList.remove('hidden');
             else loader.classList.add('hidden');
+        }
+    </script>
+
+    <script>
+        // BIẾN LƯU TẠM KẾT QUẢ SAU KHI QUÉT ẢNH THỰC TẾ
+        let scannedRecipeData = null;
+
+        async function processRecipeCardScan(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const statusTag = document.getElementById('ocr-status-tag');
+            const resultsBox = document.getElementById('ocr-results-box');
+
+            statusTag.textContent = currentLang === 'vi' ? 'Đang đọc chữ từ ảnh (OCR)...' : 'Reading text (OCR)...';
+            statusTag.className = "text-xs text-amber-400 font-mono font-semibold animate-pulse";
+            
+            resultsBox.innerHTML = `<span class="text-amber-400 italic">Đang phân tích hình ảnh, vui lòng đợi trong giây lát...</span>`;
+
+            try {
+                // Sử dụng Tesseract.js để nhận diện văn bản tiếng Anh/số từ ảnh
+                const worker = await Tesseract.createWorker('eng');
+                const ret = await worker.recognize(file);
+                const text = ret.data.text;
+                await worker.terminate();
+
+                console.log("OCR Raw Text:", text);
+
+                // Phân tích văn bản (Text Parsing) tìm thông số camera
+                const parsed = parseRecipeText(text);
+                scannedRecipeData = parsed;
+
+                // Hiển thị kết quả trích xuất thực tế lên giao diện
+                resultsBox.innerHTML = `
+                    <div class="text-fuji-accent font-bold mb-1">✔ Đọc dữ liệu thành công!</div>
+                    <div><span class="text-gray-500">Brand:</span> <b class="text-white">${parsed.brand}</b></div>
+                    <div><span class="text-gray-500">Film Simulation:</span> <b class="text-fuji-red">${parsed.filmSim}</b></div>
+                    <div><span class="text-gray-500">WB Shift:</span> R:${parsed.wbRed} / B:${parsed.wbBlue}</div>
+                    <div><span class="text-gray-500">Highlight / Shadow:</span> ${parsed.highlight} / ${parsed.shadow}</div>
+                    <div><span class="text-gray-500">Color Saturation:</span> ${parsed.color}</div>
+                    <div><span class="text-gray-500">Grain Effect:</span> ${parsed.grain}</div>
+                `;
+
+                statusTag.textContent = currentLang === 'vi' ? 'Hoàn tất' : 'Success';
+                statusTag.className = "text-xs text-fuji-accent font-mono font-semibold";
+
+            } catch (err) {
+                console.error("OCR Error:", err);
+                statusTag.textContent = "Lỗi đọc ảnh";
+                statusTag.className = "text-xs text-red-400 font-mono font-semibold";
+                resultsBox.innerHTML = `<span class="text-red-400">Không thể trích xuất chữ từ ảnh này. Vui lòng thử ảnh rõ nét hơn hoặc dùng ảnh mẫu khác.</span>`;
+            }
+        }
+
+        // Hàm thuật toán bóc tách từ khóa (Parser) từ nội dung OCR đọc được
+        function parseRecipeText(text) {
+            const lowerText = text.toLowerCase();
+            
+            // Mặc định ban đầu
+            let result = {
+                id: 'scanned-' + Date.now(),
+                name: 'Scanned Recipe ' + Math.floor(Math.random() * 900 + 100),
+                brand: 'Fujifilm',
+                sensor: 'Parsed Recipe Card',
+                filmSim: 'Classic Neg.',
+                wbRed: 0,
+                wbBlue: 0,
+                grain: 'Off',
+                colorFx: 'Off',
+                colorFxBlue: 'Off',
+                dynamicRange: 'DR100',
+                highlight: 0,
+                shadow: 0,
+                color: 0,
+                sharpness: 0,
+                denoise: 0
+            };
+
+            // 1. Nhận diện Hãng máy ảnh
+            if (lowerText.includes('ricoh')) result.brand = 'Ricoh GR';
+            else if (lowerText.includes('sony')) result.brand = 'Sony';
+            else if (lowerText.includes('canon')) result.brand = 'Canon';
+            else if (lowerText.includes('leica')) result.brand = 'Leica';
+            else if (lowerText.includes('nikon')) result.brand = 'Nikon';
+            else result.brand = 'Fujifilm';
+
+            // 2. Nhận diện Kiểu Film Simulation
+            if (lowerText.includes('classic neg')) result.filmSim = 'Classic Neg.';
+            else if (lowerText.includes('classic chrome')) result.filmSim = 'Classic Chrome';
+            else if (lowerText.includes('nostalgic')) result.filmSim = 'Nostalgic Neg.';
+            else if (lowerText.includes('reala')) result.filmSim = 'Reala Ace';
+            else if (lowerText.includes('velvia')) result.filmSim = 'Velvia';
+            else if (lowerText.includes('astia')) result.filmSim = 'ASTIA';
+            else if (lowerText.includes('provia')) result.filmSim = 'PROVIA';
+            else if (lowerText.includes('eterna')) result.filmSim = 'Eterna';
+            else if (lowerText.includes('acros')) result.filmSim = 'ACROS';
+            else if (lowerText.includes('positive')) result.filmSim = 'Ricoh Positive Film';
+
+            // 3. Quét thông số White Balance (R và B / Red / Blue)
+            // Tìm các mẫu dạng "R: -1", "Red: +2", hoặc các con số đi kèm
+            const matchRed = text.match(/(?:red|r)\s*[:=]?\s*([+-]?\d+)/i);
+            if (matchRed) result.wbRed = parseInt(matchRed[1]);
+
+            const matchBlue = text.match(/(?:blue|b)\s*[:=]?\s*([+-]?\d+)/i);
+            if (matchBlue) result.wbBlue = parseInt(matchBlue[1]);
+
+            // 4. Quét Highlight & Shadow
+            const matchHi = text.match(/(?:highlight|hi)\s*[:=]?\s*([+-]?\d*\.?\d+)/i);
+            if (matchHi) result.highlight = parseFloat(matchHi[1]);
+
+            const matchSh = text.match(/(?:shadow|sh)\s*[:=]?\s*([+-]?\d*\.?\d+)/i);
+            if (matchSh) result.shadow = parseFloat(matchSh[1]);
+
+            // 5. Quét Color / Saturation
+            const matchColor = text.match(/(?:color|saturation|sat)\s*[:=]?\s*([+-]?\d+)/i);
+            if (matchColor) result.color = parseInt(matchColor[1]);
+
+            // 6. Quét Grain
+            if (lowerText.includes('strong grain') || lowerText.includes('grain: strong')) result.grain = 'Strong';
+            else if (lowerText.includes('weak grain') || lowerText.includes('grain: weak')) result.grain = 'Weak';
+
+            // Cập nhật tên gợi ý theo đúng tên film vừa trích xuất
+            result.name = `${result.brand} ${result.filmSim}`;
+            return result;
+        }
+    </script>
+    <script type="text/javascript">
+        function applyScannedRecipeToStudio() {
+            if (!scannedRecipeData) {
+                alert(currentLang === 'vi' 
+                    ? 'Vui lòng chọn và đợi hệ thống quét xong ảnh thẻ công thức trước khi áp dụng!' 
+                    : 'Please upload and wait for the recipe card scan to complete first!');
+                return;
+            }
+
+            // Nạp dữ liệu vừa quét vào currentRecipe
+            currentRecipe = { ...scannedRecipeData };
+
+            // Cập nhật lại toàn bộ giao diện thanh trượt
+            updateControlsUIFromRecipe();
+
+            // Chuyển hướng tab về lại Studio Editor
+            switchMainTab('editor');
+
+            // Tiến hành render lại ảnh trên canvas theo thông số mới
+            renderCanvasEngine();
+            
+            console.log("Đã áp dụng thành công công thức vào Studio:", currentRecipe);
         }
     </script>
 </body>
