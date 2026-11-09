@@ -97,6 +97,9 @@
                     <button id="nav-editor-btn" onclick="switchMainTab('editor')" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-white bg-fuji-border">
                         <i class="fa-solid fa-sliders"></i> <span data-i18n="tabEditor">Studio Editor</span>
                     </button>
+                    <button id="nav-cmatch-btn" onclick="switchMainTab('cmatch')" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
+                        <i class="fa-solid fa-wand-magic-sparkles text-fuji-gold"></i> <span data-i18n="tabColorMatch">Color Match</span>
+                    </button>
                     <button id="nav-ocr-btn" onclick="switchMainTab('ocr')" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
                         <i class="fa-solid fa-camera font-bold text-fuji-red"></i> <span data-i18n="tabOcr">Scan Recipe</span>
                     </button>
@@ -153,7 +156,7 @@
                     </div>
                 </div>
 
-                <div class="glass-panel rounded-2xl p-2 relative overflow-hidden flex items-center justify-center min-h-[350px] lg:min-h-[480px] bg-black/50 border border-fuji-border" id="canvas-wrapper">
+                <div class="glass-panel flex-1 rounded-2xl p-2 relative overflow-hidden flex items-center justify-center min-h-[350px] lg:min-h-[480px] bg-black/50 border border-fuji-border" id="canvas-wrapper">
                     <div class="relative max-w-full max-h-[600px] flex items-center justify-center overflow-hidden rounded-xl">
                         <canvas id="main-canvas" class="max-w-full max-h-[560px] object-contain shadow-2xl rounded-lg"></canvas>
                         
@@ -203,7 +206,7 @@
                     </select>
                 </div>
 
-                <div class="glass-panel p-4 sm:p-5 rounded-2xl space-y-4 flex-1 overflow-y-auto" id="controls-scroll-panel">
+                <div class="glass-panel p-4 sm:p-5 rounded-2xl space-y-4 flex-1 overflow-y-auto max-h-[580px]" id="controls-scroll-panel">
                     
                     <div class="flex items-center justify-between border-b border-fuji-border pb-2.5">
                         <h3 class="font-bold text-white text-xs sm:text-sm flex items-center gap-2">
@@ -348,7 +351,58 @@
             </div>
         </div>
 
-        <!-- SECTION 2: OCR SCANNER -->
+        <!-- SECTION 2: COLOR MATCH STUDIO -->
+        <div id="section-cmatch" class="space-y-6 hidden w-full">
+            <div class="glass-panel p-5 sm:p-6 rounded-2xl space-y-3 border-l-4 border-l-fuji-gold">
+                <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-fuji-gold"></i> <span data-i18n="cmatchTitle">AI Color Match & Tone Profiler</span>
+                </h2>
+                <p class="text-xs sm:text-sm text-gray-400 leading-relaxed" data-i18n="cmatchDesc">
+                    Upload a reference sample photo. The engine extracts its core color palette, white balance shift, and lighting curve to match your active editor photo, and lets you save it as a permanent preset.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Dropzone / Upload Reference -->
+                <div class="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center text-center space-y-4 border-2 border-dashed border-fuji-border hover:border-fuji-gold transition cursor-pointer" onclick="document.getElementById('cmatch-file-input').click()">
+                    <div id="cmatch-preview-container" class="w-full h-48 rounded-xl bg-black/40 flex flex-col items-center justify-center overflow-hidden relative border border-fuji-border">
+                        <div id="cmatch-placeholder-info" class="flex flex-col items-center space-y-2 p-4">
+                            <i class="fa-solid fa-cloud-arrow-up text-fuji-gold text-3xl"></i>
+                            <span class="text-sm font-semibold text-white" data-i18n="cmatchDropHeader">Upload Reference Image</span>
+                            <span class="text-xs text-gray-400" data-i18n="cmatchDropSub">Click or drag sample image to match colors</span>
+                        </div>
+                        <img id="cmatch-thumb" class="w-full h-full object-contain hidden">
+                    </div>
+                    <input type="file" id="cmatch-file-input" accept="image/*" class="hidden" onchange="handleColorMatchUpload(event)">
+                    <button class="px-4 py-2 bg-fuji-border hover:bg-gray-700 text-white text-xs font-semibold rounded-lg transition" data-i18n="browseReference">
+                        Browse Reference Photo
+                    </button>
+                </div>
+
+                <!-- Analysis & Action Box -->
+                <div class="glass-panel p-5 rounded-2xl space-y-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3 border-b border-fuji-border pb-2">
+                            <h3 class="text-sm font-bold text-white" data-i18n="cmatchExtractedHeader">Extracted Reference Profile</h3>
+                            <span id="cmatch-status-tag" class="text-xs text-gray-400 font-mono font-semibold" data-i18n="statusIdle">Waiting for sample</span>
+                        </div>
+                        <div id="cmatch-results-box" class="space-y-2 text-xs font-mono bg-fuji-dark p-3.5 rounded-xl border border-fuji-border text-gray-300 min-h-[160px] max-h-[220px] overflow-y-auto">
+                            <span class="text-gray-500 italic" data-i18n="noMatchYet">No sample image loaded. Upload a reference photo to analyze its tone and lighting profile.</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <button onclick="applyColorMatchToStudio()" id="btn-apply-cmatch" disabled class="w-full py-2.5 bg-fuji-border text-gray-500 cursor-not-allowed text-xs font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-bolt"></i> <span data-i18n="applyColorMatch">Apply Color Match to Studio</span>
+                        </button>
+                        <button onclick="saveColorMatchAsPreset()" id="btn-save-cmatch" disabled class="w-full py-2.5 bg-fuji-panel border border-fuji-border text-gray-500 cursor-not-allowed text-xs font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-bookmark"></i> <span data-i18n="saveColorMatchPreset">Save Color & Light as New Preset</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: OCR SCANNER -->
         <div id="section-ocr" class="space-y-6 hidden w-full">
             <div class="glass-panel p-5 sm:p-6 rounded-2xl space-y-3 border-l-4 border-l-fuji-red">
                 <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
@@ -391,7 +445,7 @@
             </div>
         </div>
 
-        <!-- SECTION 3: RECIPE LIBRARY -->
+        <!-- SECTION 4: RECIPE LIBRARY -->
         <div id="section-library" class="w-full space-y-6 pt-6 border-t border-fuji-border/40 mt-8">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -482,6 +536,7 @@
         const i18n = {
             vi: {
                 tabEditor: "Trình chỉnh sửa",
+                tabColorMatch: "Color Match",
                 tabOcr: "Quét công thức",
                 tabLibrary: "Thư viện công thức",
                 export: "Xuất ảnh HD",
@@ -513,6 +568,16 @@
                 optOff: "Tắt (Off)",
                 optWeak: "Yếu (Weak)",
                 optStrong: "Mạnh (Strong)",
+                cmatchTitle: "AI Color Match & Tone Profiler",
+                cmatchDesc: "Tải lên ảnh mẫu tham khảo. Hệ thống sẽ phân tích dải màu sắc, cân bằng trắng và độ tương phản ánh sáng để áp dụng cho ảnh hiện tại, đồng thời hỗ trợ lưu lại làm Preset vĩnh viễn.",
+                cmatchDropHeader: "Tải lên ảnh mẫu tham khảo",
+                cmatchDropSub: "Bấm hoặc kéo thả ảnh mẫu để trích xuất màu",
+                browseReference: "Duyệt ảnh mẫu",
+                cmatchExtractedHeader: "Thông số Profile Trích Xuất",
+                statusIdle: "Chờ ảnh mẫu",
+                noMatchYet: "Chưa có ảnh mẫu nào được tải lên.",
+                applyColorMatch: "Áp dụng Color Match vào Studio",
+                saveColorMatchPreset: "Lưu Màu & Ánh sáng thành Preset mới",
                 ocrTitle: "Đọc & Trích xuất công thức từ ảnh",
                 ocrDesc: "Tải lên hình ảnh hoặc ảnh chụp màn hình thẻ công thức. Hệ thống tự động phân tích các thông số thành preset kỹ thuật số.",
                 ocrDropHeader: "Tải lên ảnh thẻ công thức",
@@ -535,6 +600,7 @@
             },
             en: {
                 tabEditor: "Studio Editor",
+                tabColorMatch: "Color Match",
                 tabOcr: "Scan Recipe",
                 tabLibrary: "Recipe Library",
                 export: "Export HD",
@@ -566,6 +632,16 @@
                 optOff: "Off",
                 optWeak: "Weak",
                 optStrong: "Strong",
+                cmatchTitle: "AI Color Match & Tone Profiler",
+                cmatchDesc: "Upload a reference sample photo. The engine extracts its core color palette, white balance shift, and lighting curve to match your active editor photo, and lets you save it as a permanent preset.",
+                cmatchDropHeader: "Upload Reference Image",
+                cmatchDropSub: "Click or drag sample image to match colors",
+                browseReference: "Browse Reference Photo",
+                cmatchExtractedHeader: "Extracted Reference Profile",
+                statusIdle: "Waiting for sample",
+                noMatchYet: "No sample image loaded. Upload a reference photo to analyze its tone and lighting profile.",
+                applyColorMatch: "Apply Color Match to Studio",
+                saveColorMatchPreset: "Save Color & Light as New Preset",
                 ocrTitle: "Recipe Card OCR & Parameter Extractor",
                 ocrDesc: "Upload an image of any camera recipe card. The extractor parses parameters into editable digital controls.",
                 ocrDropHeader: "Upload Recipe Card Image",
@@ -637,6 +713,9 @@
         let pendingDeleteId = null;
         let mainCanvas, ctx;
 
+        // Biến lưu trữ kết quả phân tích Color Match
+        let currentMatchedRecipe = null;
+
         window.onload = function() {
             mainCanvas = document.getElementById('main-canvas');
             ctx = mainCanvas.getContext('2d', { willReadFrequently: true });
@@ -702,7 +781,7 @@
         }
 
         function switchMainTab(tabName) {
-            ['editor', 'ocr', 'library'].forEach(t => {
+            ['editor', 'cmatch', 'ocr', 'library'].forEach(t => {
                 const sec = document.getElementById(`section-${t}`);
                 const navBtn = document.getElementById(`nav-${t}-btn`);
                 if (t === tabName) {
@@ -1135,7 +1214,6 @@
             const nameInput = document.getElementById('modal-recipe-name').value.trim();
             const descInput = document.getElementById('modal-recipe-desc').value.trim();
 
-            // Thu thập trực tiếp các thông số đang chọn thực tế trên giao diện Studio lúc bấm lưu
             const liveRecipe = {
                 id: 'recipe-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
                 name: nameInput || `${document.getElementById('param-brand').value} ${document.getElementById('param-filmSim').value}`,
@@ -1153,16 +1231,14 @@
                 denoise: parseInt(document.getElementById('param-denoise').value)
             };
 
-            // Đưa vào danh sách thư viện
             recipeLibrary.push(liveRecipe);
-            currentRecipe = { ...liveRecipe }; // Cập nhật làm preset hiện tại
+            currentRecipe = { ...liveRecipe };
 
             saveLibraryToLocalStorage();
             populatePresetDropdown();
             renderLibraryGrid();
             closeSaveModal();
 
-            // Đồng bộ lên Firebase Cloud nếu có mạng
             if (isFirebaseActive && db) {
                 db.collection("recipes").doc(liveRecipe.id).set(liveRecipe).catch(e => console.log("Cloud save queued offline:", e));
             }
@@ -1202,7 +1278,7 @@
     </script>
 
     <script>
-        // BIẾN LƯU TẠM KẾT QUẢ SAU KHI QUÉT ẢNH THỰC TẾ
+        // OCR SCANNER LOGIC
         let scannedRecipeData = null;
 
         async function processRecipeCardScan(event) {
@@ -1218,19 +1294,14 @@
             resultsBox.innerHTML = `<span class="text-amber-400 italic">Đang phân tích hình ảnh, vui lòng đợi trong giây lát...</span>`;
 
             try {
-                // Sử dụng Tesseract.js để nhận diện văn bản tiếng Anh/số từ ảnh
                 const worker = await Tesseract.createWorker('eng');
                 const ret = await worker.recognize(file);
                 const text = ret.data.text;
                 await worker.terminate();
 
-                console.log("OCR Raw Text:", text);
-
-                // Phân tích văn bản (Text Parsing) tìm thông số camera
                 const parsed = parseRecipeText(text);
                 scannedRecipeData = parsed;
 
-                // Hiển thị kết quả trích xuất thực tế lên giao diện
                 resultsBox.innerHTML = `
                     <div class="text-fuji-accent font-bold mb-1">✔ Đọc dữ liệu thành công!</div>
                     <div><span class="text-gray-500">Brand:</span> <b class="text-white">${parsed.brand}</b></div>
@@ -1252,14 +1323,11 @@
             }
         }
 
-        // Hàm thuật toán bóc tách từ khóa (Parser) từ nội dung OCR đọc được
         function parseRecipeText(text) {
             const lowerText = text.toLowerCase();
-            
-            // Mặc định ban đầu
             let result = {
                 id: 'scanned-' + Date.now(),
-                name: 'Scanned Recipe ' + Math.floor(Math.random() * 900 + 100),
+                name: 'Scanned Recipe',
                 brand: 'Fujifilm',
                 sensor: 'Parsed Recipe Card',
                 filmSim: 'Classic Neg.',
@@ -1276,7 +1344,6 @@
                 denoise: 0
             };
 
-            // 1. Nhận diện Hãng máy ảnh
             if (lowerText.includes('ricoh')) result.brand = 'Ricoh GR';
             else if (lowerText.includes('sony')) result.brand = 'Sony';
             else if (lowerText.includes('canon')) result.brand = 'Canon';
@@ -1284,7 +1351,6 @@
             else if (lowerText.includes('nikon')) result.brand = 'Nikon';
             else result.brand = 'Fujifilm';
 
-            // 2. Nhận diện Kiểu Film Simulation
             if (lowerText.includes('classic neg')) result.filmSim = 'Classic Neg.';
             else if (lowerText.includes('classic chrome')) result.filmSim = 'Classic Chrome';
             else if (lowerText.includes('nostalgic')) result.filmSim = 'Nostalgic Neg.';
@@ -1296,56 +1362,188 @@
             else if (lowerText.includes('acros')) result.filmSim = 'ACROS';
             else if (lowerText.includes('positive')) result.filmSim = 'Ricoh Positive Film';
 
-            // 3. Quét thông số White Balance (R và B / Red / Blue)
-            // Tìm các mẫu dạng "R: -1", "Red: +2", hoặc các con số đi kèm
             const matchRed = text.match(/(?:red|r)\s*[:=]?\s*([+-]?\d+)/i);
             if (matchRed) result.wbRed = parseInt(matchRed[1]);
 
             const matchBlue = text.match(/(?:blue|b)\s*[:=]?\s*([+-]?\d+)/i);
             if (matchBlue) result.wbBlue = parseInt(matchBlue[1]);
 
-            // 4. Quét Highlight & Shadow
             const matchHi = text.match(/(?:highlight|hi)\s*[:=]?\s*([+-]?\d*\.?\d+)/i);
             if (matchHi) result.highlight = parseFloat(matchHi[1]);
 
             const matchSh = text.match(/(?:shadow|sh)\s*[:=]?\s*([+-]?\d*\.?\d+)/i);
             if (matchSh) result.shadow = parseFloat(matchSh[1]);
 
-            // 5. Quét Color / Saturation
             const matchColor = text.match(/(?:color|saturation|sat)\s*[:=]?\s*([+-]?\d+)/i);
             if (matchColor) result.color = parseInt(matchColor[1]);
 
-            // 6. Quét Grain
             if (lowerText.includes('strong grain') || lowerText.includes('grain: strong')) result.grain = 'Strong';
             else if (lowerText.includes('weak grain') || lowerText.includes('grain: weak')) result.grain = 'Weak';
 
-            // Cập nhật tên gợi ý theo đúng tên film vừa trích xuất
             result.name = `${result.brand} ${result.filmSim}`;
             return result;
         }
-    </script>
-    <script type="text/javascript">
+
         function applyScannedRecipeToStudio() {
             if (!scannedRecipeData) {
-                alert(currentLang === 'vi' 
-                    ? 'Vui lòng chọn và đợi hệ thống quét xong ảnh thẻ công thức trước khi áp dụng!' 
-                    : 'Please upload and wait for the recipe card scan to complete first!');
+                alert(currentLang === 'vi' ? 'Vui lòng chọn và đợi hệ thống quét xong ảnh thẻ công thức trước khi áp dụng!' : 'Please upload and wait for the recipe card scan to complete first!');
                 return;
             }
-
-            // Nạp dữ liệu vừa quét vào currentRecipe
             currentRecipe = { ...scannedRecipeData };
-
-            // Cập nhật lại toàn bộ giao diện thanh trượt
             updateControlsUIFromRecipe();
-
-            // Chuyển hướng tab về lại Studio Editor
             switchMainTab('editor');
-
-            // Tiến hành render lại ảnh trên canvas theo thông số mới
             renderCanvasEngine();
+        }
+    </script>
+
+    <script type="text/javascript">
+        // COLOR MATCH STUDIO LOGIC
+        function handleColorMatchUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Hiển thị thumbnail ảnh mẫu
+                    const thumb = document.getElementById('cmatch-thumb');
+                    thumb.src = img.src;
+                    thumb.classList.remove('hidden');
+                    document.getElementById('cmatch-placeholder-info').classList.add('hidden');
+
+                    // Tiến hành phân tích màu sắc & ánh sáng (Color Profiling)
+                    analyzeReferenceImage(img);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function analyzeReferenceImage(img) {
+            const statusTag = document.getElementById('cmatch-status-tag');
+            const resultsBox = document.getElementById('cmatch-results-box');
+
+            statusTag.textContent = currentLang === 'vi' ? 'Đang phân tích màu & ánh sáng...' : 'Analyzing profile...';
+            statusTag.className = "text-xs text-fuji-gold font-mono font-semibold animate-pulse";
+
+            // Vẽ vào offscreen canvas để trích xuất ma trận pixel
+            const canvas = document.createElement('canvas');
+            const maxSz = 300;
+            let w = img.width, h = img.height;
+            if (w > maxSz || h > maxSz) {
+                if (w > h) { h = Math.round((h * maxSz) / w); w = maxSz; }
+                else { w = Math.round((w * maxSz) / h); h = maxSz; }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const c = canvas.getContext('2d');
+            c.drawImage(img, 0, 0, w, h);
+
+            const imgData = c.getImageData(0, 0, w, h);
+            const data = imgData.data;
+
+            let totalR = 0, totalG = 0, totalB = 0;
+            let minLum = 255, maxLum = 0;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i+1], b = data[i+2];
+                totalR += r; totalG += g; totalB += b;
+                const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                if (lum < minLum) minLum = lum;
+                if (lum > maxLum) maxLum = lum;
+            }
+
+            const pixelCount = data.length / 4;
+            const avgR = totalR / pixelCount;
+            const avgG = totalG / pixelCount;
+            const avgB = totalB / pixelCount;
+
+            // Tính toán WB Shift quy đổi sang thông số máy ảnh (-9 đến +9)
+            const diffR = avgR - avgG;
+            const diffB = avgB - avgG;
+            const wbRedVal = Math.max(-9, Math.min(9, Math.round(diffR / 6)));
+            const wbBlueVal = Math.max(-9, Math.min(9, Math.round(-diffB / 6)));
+
+            // Tính toán Highlight & Shadow dựa trên biên độ sáng tối
+            const contrastSpan = maxLum - minLum;
+            const highlightVal = contrastSpan > 180 ? 1.5 : (contrastSpan < 100 ? -1.0 : 0.0);
+            const shadowVal = minLum < 30 ? 1.0 : (minLum > 70 ? -1.0 : 0.0);
+
+            // Tính toán độ bão hòa (Color Saturation) dựa trên độ lệch chuẩn màu
+            const colorSatVal = Math.max(-4, Math.min(4, Math.round((Math.abs(diffR) + Math.abs(diffB)) / 15) - 1));
+
+            // Chọn loại Film Simulation tương ứng dựa trên tông màu chủ đạo
+            let matchedSim = 'Classic Neg.';
+            if (avgB > avgR && avgB > avgG) matchedSim = 'Classic Chrome';
+            else if (avgR > avgB && avgG > avgB) matchedSim = 'Nostalgic Neg.';
+            else if (Math.abs(avgR - avgG) < 5 && Math.abs(avgG - avgB) < 5) matchedSim = 'PROVIA';
+
+            currentMatchedRecipe = {
+                id: 'cmatch-' + Date.now(),
+                name: `ColorMatch [R:${wbRedVal} B:${wbBlueVal}]`,
+                brand: 'Fujifilm',
+                sensor: 'AI Reference Color Match',
+                filmSim: matchedSim,
+                wbRed: wbRedVal,
+                wbBlue: wbBlueVal,
+                grain: 'Weak',
+                colorFx: 'Weak',
+                colorFxBlue: 'Weak',
+                dynamicRange: 'DR200',
+                highlight: highlightVal,
+                shadow: shadowVal,
+                color: colorSatVal,
+                sharpness: 1,
+                denoise: -2
+            };
+
+            // Hiển thị kết quả trích xuất ra màn hình
+            resultsBox.innerHTML = `
+                <div class="text-fuji-gold font-bold mb-1">✔ Trích xuất màu và ánh sáng thành công!</div>
+                <div><span class="text-gray-500">Suggested Profile:</span> <b class="text-white">${matchedSim}</b></div>
+                <div><span class="text-gray-500">Matched WB Shift:</span> R:${wbRedVal} / B:${wbBlueVal}</div>
+                <div><span class="text-gray-500">Tone Curve (H/S):</span> ${highlightVal} / ${shadowVal}</div>
+                <div><span class="text-gray-500">Color Saturation:</span> ${colorSatVal >= 0 ? '+' + colorSatVal : colorSatVal}</div>
+                <div><span class="text-gray-500">Average RGB:</span> R:${Math.round(avgR)} G:${Math.round(avgG)} B:${Math.round(avgB)}</div>
+            `;
+
+            statusTag.textContent = currentLang === 'vi' ? 'Sẵn sàng áp dụng' : 'Ready to apply';
+            statusTag.className = "text-xs text-fuji-accent font-mono font-semibold";
+
+            // Kích hoạt các nút bấm hành động
+            const btnApply = document.getElementById('btn-apply-cmatch');
+            btnApply.disabled = false;
+            btnApply.className = "w-full py-2.5 bg-fuji-red hover:bg-red-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-fuji-red/20 transition flex items-center justify-center gap-2";
+
+            const btnSave = document.getElementById('btn-save-cmatch');
+            btnSave.disabled = false;
+            btnSave.className = "w-full py-2.5 bg-fuji-accent hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-fuji-accent/20 transition flex items-center justify-center gap-2";
+        }
+
+        function applyColorMatchToStudio() {
+            if (!currentMatchedRecipe) return;
+            currentRecipe = { ...currentMatchedRecipe };
+            updateControlsUIFromRecipe();
+            switchMainTab('editor');
+            renderCanvasEngine();
+        }
+
+        function saveColorMatchAsPreset() {
+            if (!currentMatchedRecipe) return;
             
-            console.log("Đã áp dụng thành công công thức vào Studio:", currentRecipe);
+            recipeLibrary.push(currentMatchedRecipe);
+            currentRecipe = { ...currentMatchedRecipe };
+
+            saveLibraryToLocalStorage();
+            populatePresetDropdown();
+            renderLibraryGrid();
+
+            if (isFirebaseActive && db) {
+                db.collection("recipes").doc(currentMatchedRecipe.id).set(currentMatchedRecipe).catch(e => console.log("Cloud save queued offline:", e));
+            }
+
+            switchMainTab('library');
         }
     </script>
 </body>
