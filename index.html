@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Camera Recipe Converter & Cloud Studio</title>
+
+    <!-- Tailwind CSS & FontAwesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDKs (Compat version for single HTML execution) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        fuji: {
+                            red: '#E60012',
+                            dark: '#0F1015',
+                            card: '#181A20',
+                            panel: '#20232B',
+                            border: '#2E323F',
+                            accent: '#10B981',
+                            gold: '#F59E0B'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { touch-action: manipulation; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0F1015; }
+        ::-webkit-scrollbar-thumb { background: #2E323F; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+        
+        .glass-panel {
+            background: rgba(24, 26, 32, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            background: #2E323F;
+            height: 6px;
+            border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #E60012;
+            cursor: pointer;
+            box-shadow: 0 0 6px rgba(230, 0, 18, 0.5);
+            border: 2px solid #ffffff;
+        }
+        input[type=range]:focus { outline: none; }
+    </style>
+</head>
+<body class="bg-fuji-dark text-gray-200 font-sans min-h-screen flex flex-col selection:bg-fuji-red selection:text-white pb-16 lg:pb-0">
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-fuji-border bg-fuji-card/95 sticky top-0 z-40 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14 sm:h-16">
+                <!-- Logo & Brand -->
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-fuji-red flex items-center justify-center font-bold text-white shadow-lg shadow-fuji-red/20 text-base sm:text-lg tracking-wider">
+                        CAM
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-white tracking-wide text-sm sm:text-base leading-none">Recipe Studio</h1>
+                        <span class="text-[10px] sm:text-xs text-gray-400 font-mono">Cloud Sync Edition</span>
+                    </div>
+                </div>
+
+                <!-- Center Nav Desktop Tabs -->
+                <nav class="hidden md:flex items-center space-x-1 bg-fuji-dark p-1 rounded-xl border border-fuji-border">
+                    <button id="nav-editor-btn" onclick="switchMainTab('editor')" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-white bg-fuji-border">
+                        <i class="fa-solid fa-sliders"></i> <span data-i18n="tabEditor">Studio Editor</span>
+                    </button>
+                    <button id="nav-ocr-btn" onclick="switchMainTab('ocr')" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
+                        <i class="fa-solid fa-camera font-bold text-fuji-red"></i> <span data-i18n="tabOcr">Scan Recipe</span>
+                    </button>
+                    <button id="nav-library-btn" onclick="switchMainTab('library')" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
+                        <i class="fa-solid fa-bookmark"></i> <span data-i18n="tabLibrary">Library</span>
+                    </button>
+                </nav>
+
+                <!-- Cloud Sync Status & Language Switcher -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <!-- Firebase Status Badge -->
+                    <div id="cloud-status-badge" class="px-2.5 py-1.5 bg-fuji-panel border border-fuji-border rounded-lg text-[11px] font-mono flex items-center gap-1.5 text-gray-400">
+                        <i class="fa-solid fa-cloud text-gray-500" id="cloud-icon"></i>
+                        <span id="cloud-text" class="hidden sm:inline">Offline Mode</span>
+                    </div>
+
+                    <button id="lang-toggle-btn" onclick="toggleLanguage()" class="px-2.5 py-1.5 sm:px-3 bg-fuji-panel hover:bg-fuji-border border border-fuji-border text-xs font-semibold rounded-lg text-white transition flex items-center gap-1.5 shadow-sm">
+                        <i class="fa-solid fa-globe text-fuji-red"></i> <span id="lang-text">TIẾNG VIỆT</span>
+                    </button>
+
+                    <button onclick="downloadRenderedImage()" class="px-3 py-1.5 bg-fuji-red hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shadow-md shadow-fuji-red/20">
+                        <i class="fa-solid fa-download"></i> <span class="hidden sm:inline" data-i18n="export">Export HD</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Responsive Layout Wrapper -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col space-y-8">
+
+        <!-- SECTION 1: STUDIO EDITOR -->
+        <div id="section-editor" class="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-6">
+            
+            <!-- LEFT COLUMN: Canvas -->
+            <div class="lg:col-span-7 xl:col-span-8 flex flex-col space-y-4">
+                
+                <div class="glass-panel p-3 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div class="flex items-center gap-2">
+                        <label class="cursor-pointer px-3.5 py-2 bg-fuji-red hover:bg-red-600 text-white font-semibold rounded-lg transition flex items-center gap-1.5 shadow">
+                            <i class="fa-solid fa-image"></i> <span data-i18n="loadPhoto">Load Photo</span>
+                            <input type="file" id="image-upload-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                        </label>
+                        
+                        <button onclick="loadDefaultSamplePhoto()" class="px-3 py-2 bg-fuji-panel hover:bg-fuji-border text-gray-300 hover:text-white font-medium rounded-lg transition flex items-center gap-1.5 border border-fuji-border">
+                            <i class="fa-solid fa-water text-blue-400"></i> <span data-i18n="sample">Sample</span>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center bg-fuji-dark p-1 rounded-lg border border-fuji-border text-xs">
+                        <button id="view-processed-btn" onclick="setCompareMode('processed')" class="px-3 py-1 rounded-md text-white bg-fuji-border font-medium transition" data-i18n="modeRecipe">Recipe</button>
+                        <button id="view-split-btn" onclick="setCompareMode('split')" class="px-3 py-1 rounded-md text-gray-400 hover:text-white font-medium transition" data-i18n="modeSplit">Split 50/50</button>
+                        <button id="view-original-btn" onclick="setCompareMode('original')" class="px-3 py-1 rounded-md text-gray-400 hover:text-white font-medium transition" data-i18n="modeOriginal">Original</button>
+                    </div>
+                </div>
+
+                <div class="glass-panel flex-1 rounded-2xl p-2 relative overflow-hidden flex items-center justify-center min-h-[350px] lg:min-h-[480px] bg-black/50 border border-fuji-border" id="canvas-wrapper">
+                    <div class="relative max-w-full max-h-[600px] flex items-center justify-center overflow-hidden rounded-xl">
+                        <canvas id="main-canvas" class="max-w-full max-h-[560px] object-contain shadow-2xl rounded-lg"></canvas>
+                        
+                        <div id="split-overlay" class="absolute inset-0 pointer-events-none hidden">
+                            <div id="split-drag-handle" class="absolute top-0 bottom-0 w-0.5 bg-white shadow-2xl pointer-events-auto cursor-ew-resize flex items-center justify-center" style="left: 50%;">
+                                <div class="w-7 h-7 bg-white text-fuji-dark rounded-full flex items-center justify-center text-xs shadow-lg border border-gray-300">
+                                    <i class="fa-solid fa-arrows-left-right"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="canvas-loader" class="absolute inset-0 bg-fuji-dark/80 backdrop-blur-sm flex items-center justify-center hidden z-30">
+                        <div class="flex flex-col items-center gap-2">
+                            <i class="fa-solid fa-circle-notch fa-spin text-fuji-red text-3xl"></i>
+                            <span class="text-xs font-mono text-gray-300" data-i18n="rendering">Rendering Simulation...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-4 rounded-xl space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-microchip text-fuji-gold"></i> <span data-i18n="liveEngine">BỘ XỬ LÝ THÔNG SỐ MA TRẬN ĐA HÃNG</span>
+                        </span>
+                        <span id="recipe-badge" class="px-2.5 py-0.5 bg-fuji-red/20 text-fuji-red border border-fuji-red/40 rounded text-xs font-mono font-bold">Fuji Serenity</span>
+                    </div>
+                    <div id="parameter-matrix-info" class="text-xs font-mono text-gray-300 bg-fuji-dark/80 p-3 rounded-lg border border-fuji-border/60">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Controls Panel -->
+            <div class="lg:col-span-5 xl:col-span-4 space-y-4 flex flex-col">
+                
+                <div class="glass-panel p-4 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-film text-fuji-red"></i> <span data-i18n="selectPreset">Select Recipe</span>
+                        </label>
+                        <button onclick="openSaveModal()" class="text-xs text-fuji-accent hover:underline flex items-center gap-1 font-medium">
+                            <i class="fa-solid fa-bookmark"></i> <span data-i18n="savePreset">Save Preset</span>
+                        </button>
+                    </div>
+                    <select id="preset-select" onchange="loadPresetById(this.value)" class="w-full bg-fuji-dark border border-fuji-border text-white text-xs sm:text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-fuji-red transition">
+                    </select>
+                </div>
+
+                <div class="glass-panel p-4 sm:p-5 rounded-2xl space-y-4 flex-1 overflow-y-auto max-h-[580px]" id="controls-scroll-panel">
+                    
+                    <div class="flex items-center justify-between border-b border-fuji-border pb-2.5">
+                        <h3 class="font-bold text-white text-xs sm:text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-fuji-red"></i> <span data-i18n="recipeAdjustments">Recipe Adjustments</span>
+                        </h3>
+                        <button onclick="resetParametersToDefault()" class="text-[11px] text-gray-400 hover:text-white transition" data-i18n="reset">Reset Parameters</button>
+                    </div>
+
+                    <!-- Camera Brand Selection -->
+                    <div class="space-y-1">
+                        <label class="text-xs text-gray-300 font-semibold flex justify-between">
+                            <span data-i18n="cameraBrand">Hãng máy ảnh</span>
+                            <span id="val-brand" class="text-fuji-gold font-mono font-bold">Fujifilm</span>
+                        </label>
+                        <select id="param-brand" onchange="updateBrandSystem(this.value)" class="w-full bg-fuji-dark border border-fuji-border text-white text-xs rounded-xl px-3 py-2">
+                            <option value="Fujifilm">Fujifilm (X-Series / GFX)</option>
+                            <option value="Ricoh GR">Ricoh GR (GR II / GR III / IIIx)</option>
+                            <option value="Sony">Sony (Alpha / Picture Profile)</option>
+                            <option value="Canon">Canon (EOS / Picture Style)</option>
+                            <option value="Leica">Leica (M / Q / SL Series)</option>
+                            <option value="Nikon">Nikon (Z-Series / Picture Control)</option>
+                        </select>
+                    </div>
+
+                    <!-- Film Simulation Select -->
+                    <div id="group-sim" class="space-y-3 pt-1">
+                        <div class="space-y-1">
+                            <label class="text-xs text-gray-300 font-semibold flex justify-between">
+                                <span data-i18n="filmSim">Color Profile / Simulation</span>
+                                <span id="val-filmSim" class="text-fuji-red font-mono font-bold">Classic Neg.</span>
+                            </label>
+                            <select id="param-filmSim" onchange="updateParam('filmSim', this.value)" class="w-full bg-fuji-dark border border-fuji-border text-white text-xs rounded-xl px-3 py-2.5">
+                                <option value="Classic Neg.">Classic Neg. (High Contrast / Teal Sky)</option>
+                                <option value="Classic Chrome">Classic Chrome (Muted / Documentary)</option>
+                                <option value="Nostalgic Neg.">Nostalgic Neg. (Warm Amber / Soft)</option>
+                                <option value="Reala Ace">Reala Ace (Neutral Color / Fidelity)</option>
+                                <option value="PROVIA">PROVIA / Standard (Natural Color)</option>
+                                <option value="Velvia">Velvia / Vivid (High Saturation)</option>
+                                <option value="ASTIA">ASTIA / Soft (Soft Tones & Portrait)</option>
+                                <option value="PRO Neg. Hi">PRO Neg. Hi (Contrast Portrait)</option>
+                                <option value="Eterna">Eterna / Cinema (Low Saturation)</option>
+                                <option value="ACROS">ACROS (Monochrome High Contrast)</option>
+                                <option value="Ricoh Positive Film">Ricoh Positive Film (Vivid Retro)</option>
+                                <option value="Ricoh Negative Film">Ricoh Negative Film (Warm Matte)</option>
+                                <option value="Sony Creative FL">Sony Creative Look FL (Film Vintage)</option>
+                                <option value="Canon Portrait">Canon Portrait (Soft Skin Tones)</option>
+                                <option value="Leica Monochrome">Leica B&W High Contrast</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- White Balance & Tone Curve -->
+                    <div id="group-wb" class="space-y-3 pt-3 border-t border-fuji-border/60">
+                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block" data-i18n="wbShiftTitle">White Balance Shift</span>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="flex justify-between text-xs text-gray-300 mb-1">
+                                    <span data-i18n="wbRed">WB Red / Amber</span>
+                                    <span id="val-wbRed" class="font-mono text-fuji-red font-bold">-1</span>
+                                </div>
+                                <input type="range" id="param-wbRed" min="-9" max="9" value="-1" step="1" oninput="updateParam('wbRed', parseInt(this.value))" class="w-full">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-gray-300 mb-1">
+                                    <span data-i18n="wbBlue">WB Blue / Cyan</span>
+                                    <span id="val-wbBlue" class="font-mono text-blue-400 font-bold">-3</span>
+                                </div>
+                                <input type="range" id="param-wbBlue" min="-9" max="9" value="-3" step="1" oninput="updateParam('wbBlue', parseInt(this.value))" class="w-full accent-blue-500">
+                            </div>
+                        </div>
+
+                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block pt-2" data-i18n="toneCurveTitle">Tone Curve Adjustments</span>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="flex justify-between text-xs text-gray-300 mb-1">
+                                    <span data-i18n="highlight">Highlight</span>
+                                    <span id="val-highlight" class="font-mono text-white font-bold">+1.0</span>
+                                </div>
+                                <input type="range" id="param-highlight" min="-4" max="4" value="1" step="0.5" oninput="updateParam('highlight', parseFloat(this.value))" class="w-full">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-gray-300 mb-1">
+                                    <span data-i18n="shadow">Shadow</span>
+                                    <span id="val-shadow" class="font-mono text-white font-bold">0.0</span>
+                                </div>
+                                <input type="range" id="param-shadow" min="-4" max="4" value="0" step="0.5" oninput="updateParam('shadow', parseFloat(this.value))" class="w-full">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Color & Special Effects -->
+                    <div id="group-fx" class="space-y-3 pt-3 border-t border-fuji-border/60">
+                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block" data-i18n="colorFxTitle">Color & Special FX</span>
+                        
+                        <div>
+                            <div class="flex justify-between text-xs text-gray-300 mb-1">
+                                <span data-i18n="colorSat">Color (Saturation)</span>
+                                <span id="val-color" class="font-mono text-fuji-gold font-bold">+3</span>
+                            </div>
+                            <input type="range" id="param-color" min="-4" max="4" value="3" step="1" oninput="updateParam('color', parseInt(this.value))" class="w-full">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-gray-300 mb-1 block" data-i18n="grainEffect">Grain Effect</label>
+                                <select id="param-grain" onchange="updateParam('grain', this.value)" class="w-full bg-fuji-dark border border-fuji-border text-white text-xs rounded-lg px-2.5 py-2">
+                                    <option value="Off" data-i18n="optOff">Off</option>
+                                    <option value="Weak" data-i18n="optWeak">Weak</option>
+                                    <option value="Strong" data-i18n="optStrong">Strong</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-300 mb-1 block" data-i18n="colorFxBlue">Color FX Blue</label>
+                                <select id="param-colorFxBlue" onchange="updateParam('colorFxBlue', this.value)" class="w-full bg-fuji-dark border border-fuji-border text-white text-xs rounded-lg px-2.5 py-2">
+                                    <option value="Off" data-i18n="optOff">Off</option>
+                                    <option value="Weak" data-i18n="optWeak">Weak</option>
+                                    <option value="Strong" data-i18n="optStrong">Strong</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <div>
+                                <div class="flex justify-between text-xs text-gray-300 mb-1">
+                                    <span data-i18n="sharpness">Sharpness</span>
+                                    <span id="val-sharpness" class="font-mono text-emerald-400 font-bold">+2</span>
+                                </div>
+                                <input type="range" id="param-sharpness" min="-4" max="4" value="2" step="1" oninput="updateParam('sharpness', parseInt(this.value))" class="w-full">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-gray-300 mb-1">
+                                    <span data-i18n="denoise">High ISO NR</span>
+                                    <span id="val-denoise" class="font-mono text-emerald-400 font-bold">-4</span>
+                                </div>
+                                <input type="range" id="param-denoise" min="-4" max="4" value="-4" step="1" oninput="updateParam('denoise', parseInt(this.value))" class="w-full">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: OCR SCANNER -->
+        <div id="section-ocr" class="space-y-6 hidden w-full">
+            <div class="glass-panel p-5 sm:p-6 rounded-2xl space-y-3 border-l-4 border-l-fuji-red">
+                <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-camera text-fuji-red"></i> <span data-i18n="ocrTitle">Recipe Card OCR & Parameter Extractor</span>
+                </h2>
+                <p class="text-xs sm:text-sm text-gray-400 leading-relaxed" data-i18n="ocrDesc">
+                    Upload an image of any camera recipe card. The extractor parses parameters into editable digital controls.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center text-center space-y-4 border-2 border-dashed border-fuji-border hover:border-fuji-red transition cursor-pointer" onclick="document.getElementById('recipe-card-file').click()">
+                    <div class="w-16 h-16 rounded-full bg-fuji-red/10 text-fuji-red flex items-center justify-center text-2xl shadow-inner">
+                        <i class="fa-solid fa-file-image"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-white" data-i18n="ocrDropHeader">Upload Recipe Card Image</h3>
+                        <p class="text-xs text-gray-400 mt-1" data-i18n="ocrDropSub">Select recipe screenshot or camera menu photo</p>
+                    </div>
+                    <input type="file" id="recipe-card-file" accept="image/*" class="hidden" onchange="processRecipeCardScan(event)">
+                    <button class="px-4 py-2 bg-fuji-border hover:bg-gray-700 text-white text-xs font-semibold rounded-lg transition" data-i18n="browseFile">
+                        Browse Image File
+                    </button>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl space-y-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3 border-b border-fuji-border pb-2">
+                            <h3 class="text-sm font-bold text-white" data-i18n="extractedHeader">Extracted Parameters</h3>
+                            <span id="ocr-status-tag" class="text-xs text-fuji-accent font-mono font-semibold" data-i18n="statusReady">Ready</span>
+                        </div>
+                        <div id="ocr-results-box" class="space-y-1.5 text-xs font-mono bg-fuji-dark p-3.5 rounded-xl border border-fuji-border text-gray-300 min-h-[150px] max-h-[220px] overflow-y-auto">
+                            <span class="text-gray-500 italic" data-i18n="noScanYet">No recipe card scanned yet. Click upload to parse camera parameters.</span>
+                        </div>
+                    </div>
+                    <button onclick="applyScannedRecipeToStudio()" class="w-full py-2.5 bg-fuji-red hover:bg-red-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-fuji-red/20 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bolt"></i> <span data-i18n="sendToStudio">Send Recipe to Editor Studio</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: RECIPE LIBRARY -->
+        <div id="section-library" class="w-full space-y-6 pt-6 border-t border-fuji-border/40 mt-8">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-white" data-i18n="libraryTitle">Thư viện công thức máy ảnh</h2>
+                    <p class="text-xs text-gray-400 mt-1" data-i18n="libraryDesc">Danh sách công thức giả lập màu đã lưu (Đồng bộ Firebase Cloud)</p>
+                </div>
+                <button onclick="createNewBlankRecipe()" class="px-4 py-2.5 bg-fuji-red hover:bg-red-600 text-white text-xs font-bold rounded-xl transition flex items-center gap-2 shadow-lg shadow-fuji-red/20">
+                    <i class="fa-solid fa-plus"></i> <span data-i18n="createBlank">+ Tạo công thức mới</span>
+                </button>
+            </div>
+
+            <!-- Recipe Grid: 3 Cột trên Desktop -->
+            <div id="library-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+        </div>
+
+    </main>
+
+    <!-- SAVE MODAL -->
+    <div id="save-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-panel p-6 rounded-2xl max-w-md w-full space-y-4 border border-fuji-border shadow-2xl">
+            <div class="flex items-center justify-between border-b border-fuji-border pb-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk text-fuji-red"></i> <span data-i18n="modalTitle">Save Preset Recipe</span>
+                </h3>
+                <button onclick="closeSaveModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-gray-300 font-semibold mb-1" data-i18n="modalName">Recipe Name</label>
+                    <input type="text" id="modal-recipe-name" class="w-full bg-fuji-dark border border-fuji-border text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-fuji-red">
+                </div>
+                <div>
+                    <label class="block text-gray-300 font-semibold mb-1" data-i18n="modalDesc">Description / Camera Model</label>
+                    <input type="text" id="modal-recipe-desc" placeholder="Fujifilm X-T5 / Ricoh GR III" class="w-full bg-fuji-dark border border-fuji-border text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-fuji-red">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeSaveModal()" class="px-3.5 py-2 bg-fuji-panel text-gray-300 rounded-lg text-xs" data-i18n="cancel">Cancel</button>
+                <button onclick="confirmSaveRecipe()" class="px-4 py-2 bg-fuji-red text-white font-semibold rounded-lg text-xs" data-i18n="save">Save Recipe</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DELETE MODAL -->
+    <div id="delete-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-panel p-6 rounded-2xl max-w-sm w-full space-y-4 border border-fuji-border shadow-2xl text-center">
+            <div class="w-12 h-12 rounded-full bg-red-500/20 text-red-500 mx-auto flex items-center justify-center text-xl">
+                <i class="fa-solid fa-trash"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-white" data-i18n="confirmDeleteTitle">Delete Recipe?</h3>
+                <p class="text-xs text-gray-400 mt-1" id="delete-recipe-name-text">Are you sure you want to delete this recipe?</p>
+            </div>
+            <div class="flex justify-center gap-3 pt-2">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 bg-fuji-panel hover:bg-fuji-border text-gray-300 rounded-lg text-xs font-semibold" data-i18n="cancel">Cancel</button>
+                <button onclick="confirmExecuteDelete()" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs shadow-lg shadow-red-600/30" data-i18n="btnDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APP ENGINE & FIREBASE INTEGRATION -->
+    <script>
+        // FIREBASE CONFIGURATION (Thay thế các thông số từ Firebase Console của bạn vào đây)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCT63INdkVNfowzIzzzSyVO9kxovY2oUUo",
+            authDomain: "studio-recipe.firebaseapp.com",
+            projectId: "studio-recipe",
+            storageBucket: "studio-recipe.firebasestorage.app",
+            messagingSenderId: "76512083956",
+            appId: "1:76512083956:web:28dfe360bfb0c85562c3a1"
+        };
+
+        let db = null;
+        let isFirebaseActive = false;
+
+        // Initialize Firebase with fallback
+        try {
+            if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("YOUR_FIREBASE")) {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                // Enable offline persistence
+                db.enablePersistence().catch(err => console.log("Persistence error:", err));
+                isFirebaseActive = true;
+            }
+        } catch (e) {
+            console.warn("Firebase not configured or offline mode active.", e);
+        }
+
+        const i18n = {
+            vi: {
+                tabEditor: "Trình chỉnh sửa",
+                tabOcr: "Quét công thức",
+                tabLibrary: "Thư viện công thức",
+                export: "Xuất ảnh HD",
+                loadPhoto: "Tải ảnh lên",
+                sample: "Ảnh mẫu",
+                modeRecipe: "Đã áp màu",
+                modeSplit: "So sánh 50/50",
+                modeOriginal: "Ảnh gốc",
+                rendering: "Đang xử lý màu...",
+                liveEngine: "BỘ XỬ LÝ THÔNG SỐ MA TRẬN ĐA HÃNG",
+                selectPreset: "Chọn công thức",
+                savePreset: "Lưu Preset",
+                recipeAdjustments: "Tùy chỉnh công thức",
+                reset: "Đặt lại thông số",
+                cameraBrand: "Hãng máy ảnh",
+                filmSim: "Giả lập màu / Profile",
+                wbShiftTitle: "Cân bằng trắng (WB Shift)",
+                wbRed: "WB Đỏ (Red / Amber)",
+                wbBlue: "WB Xanh (Blue / Cyan)",
+                toneCurveTitle: "Đường cong tương phản",
+                highlight: "Vùng sáng (Highlight)",
+                shadow: "Vùng tối (Shadow)",
+                colorFxTitle: "Màu sắc & Hiệu ứng đặc biệt",
+                colorSat: "Độ bão hòa (Color)",
+                grainEffect: "Hiệu ứng hạt (Grain)",
+                colorFxBlue: "Color FX Blue",
+                sharpness: "Độ sắc nét (Sharpness)",
+                denoise: "Khử nhiễu ISO cao",
+                optOff: "Tắt (Off)",
+                optWeak: "Yếu (Weak)",
+                optStrong: "Mạnh (Strong)",
+                ocrTitle: "Đọc & Trích xuất công thức từ ảnh",
+                ocrDesc: "Tải lên hình ảnh hoặc ảnh chụp màn hình thẻ công thức. Hệ thống tự động phân tích các thông số thành preset kỹ thuật số.",
+                ocrDropHeader: "Tải lên ảnh thẻ công thức",
+                ocrDropSub: "Chọn ảnh chụp menu máy ảnh hoặc ảnh recipe card",
+                browseFile: "Duyệt ảnh từ thiết bị",
+                extractedHeader: "Thông số trích xuất",
+                statusReady: "Sẵn sàng",
+                noScanYet: "Chưa quét thẻ công thức nào.",
+                sendToStudio: "Áp dụng công thức vào Studio",
+                libraryTitle: "Thư viện công thức máy ảnh",
+                libraryDesc: "Danh sách công thức giả lập màu đã lưu (Tự động đồng bộ Cloud khi có mạng)",
+                createBlank: "+ Tạo công thức mới",
+                modalTitle: "Lưu công thức Preset",
+                modalName: "Tên công thức",
+                modalDesc: "Mô tả / Dòng máy ảnh",
+                cancel: "Hủy",
+                save: "Lưu công thức",
+                confirmDeleteTitle: "Xóa công thức này?",
+                btnDelete: "Xóa công thức"
+            },
+            en: {
+                tabEditor: "Studio Editor",
+                tabOcr: "Scan Recipe",
+                tabLibrary: "Recipe Library",
+                export: "Export HD",
+                loadPhoto: "Load Photo",
+                sample: "Sample",
+                modeRecipe: "Recipe View",
+                modeSplit: "Split 50/50",
+                modeOriginal: "Original",
+                rendering: "Rendering Simulation...",
+                liveEngine: "Universal Digital Matrix Engine",
+                selectPreset: "Select Recipe",
+                savePreset: "Save Preset",
+                recipeAdjustments: "Recipe Adjustments",
+                reset: "Reset Parameters",
+                cameraBrand: "Camera Brand",
+                filmSim: "Color Profile / Simulation",
+                wbShiftTitle: "White Balance Shift",
+                wbRed: "WB Red / Amber",
+                wbBlue: "WB Blue / Cyan",
+                toneCurveTitle: "Tone Curve Adjustments",
+                highlight: "Highlight",
+                shadow: "Shadow",
+                colorFxTitle: "Color & Special FX",
+                colorSat: "Color (Saturation)",
+                grainEffect: "Grain Effect",
+                colorFxBlue: "Color FX Blue",
+                sharpness: "Sharpness",
+                denoise: "High ISO NR",
+                optOff: "Off",
+                optWeak: "Weak",
+                optStrong: "Strong",
+                ocrTitle: "Recipe Card OCR & Parameter Extractor",
+                ocrDesc: "Upload an image of any camera recipe card. The extractor parses parameters into editable digital controls.",
+                ocrDropHeader: "Upload Recipe Card Image",
+                ocrDropSub: "Select recipe screenshot or camera menu photo",
+                browseFile: "Browse Image File",
+                extractedHeader: "Extracted Parameters",
+                statusReady: "Ready",
+                noScanYet: "No recipe card scanned yet.",
+                sendToStudio: "Send Recipe to Editor Studio",
+                libraryTitle: "Camera Recipe Library",
+                libraryDesc: "Saved Fujifilm & multi-brand film simulation recipes (Auto Cloud Synced)",
+                createBlank: "+ Create Custom Recipe",
+                modalTitle: "Save Preset Recipe",
+                modalName: "Recipe Name",
+                modalDesc: "Description / Camera Model",
+                cancel: "Cancel",
+                save: "Save Recipe",
+                confirmDeleteTitle: "Delete Recipe?",
+                btnDelete: "Delete Recipe"
+            }
+        };
+
+        let currentLang = localStorage.getItem('fuji_app_lang') || 'vi';
+
+        const DEFAULT_RECIPES = [
+            {
+                id: 'fuji-serenity',
+                name: 'Fuji Serenity',
+                brand: 'Fujifilm',
+                sensor: 'X-T5 XF16-50mmF2.8-4.8 R LM WR',
+                filmSim: 'Classic Neg.',
+                wbRed: -1,
+                wbBlue: -3,
+                grain: 'Off',
+                colorFx: 'Weak',
+                colorFxBlue: 'Weak',
+                dynamicRange: 'DR100',
+                highlight: 1.0,
+                shadow: 0,
+                color: 3,
+                sharpness: 2,
+                denoise: -4
+            },
+            {
+                id: 'ricoh-positive-film',
+                name: 'Ricoh Positive Retro',
+                brand: 'Ricoh GR',
+                sensor: 'Ricoh GR III / IIIx',
+                filmSim: 'Ricoh Positive Film',
+                wbRed: 3,
+                wbBlue: -2,
+                grain: 'Weak',
+                colorFx: 'Off',
+                colorFxBlue: 'Off',
+                dynamicRange: 'DR100',
+                highlight: 0.5,
+                shadow: 0.5,
+                color: 2,
+                sharpness: 1,
+                denoise: -2
+            }
+        ];
+
+        let recipeLibrary = JSON.parse(localStorage.getItem('fuji_custom_recipes')) || [...DEFAULT_RECIPES];
+        let currentRecipe = { ...recipeLibrary[0] };
+        let originalImage = null;
+        let compareMode = 'processed';
+        let splitRatio = 0.5;
+        let pendingDeleteId = null;
+        let mainCanvas, ctx;
+
+        window.onload = function() {
+            mainCanvas = document.getElementById('main-canvas');
+            ctx = mainCanvas.getContext('2d', { willReadFrequently: true });
+
+            applyLanguageTranslations();
+            populatePresetDropdown();
+            renderLibraryGrid();
+            setupSplitDragControls();
+            loadDefaultSamplePhoto();
+
+            // Firebase real-time sync listener
+            if (isFirebaseActive && db) {
+                updateCloudStatusUI(true);
+                db.collection("recipes").onSnapshot(snapshot => {
+                    let cloudRecipes = [];
+                    snapshot.forEach(doc => {
+                        cloudRecipes.push({ id: doc.id, ...doc.data() });
+                    });
+                    if (cloudRecipes.length > 0) {
+                        recipeLibrary = cloudRecipes;
+                        localStorage.setItem('fuji_custom_recipes', JSON.stringify(recipeLibrary));
+                        populatePresetDropdown();
+                        renderLibraryGrid();
+                    }
+                }, err => {
+                    console.log("Firebase sync fallback to local:", err);
+                    updateCloudStatusUI(false);
+                });
+            } else {
+                updateCloudStatusUI(false);
+            }
+        };
+
+        function updateCloudStatusUI(online) {
+            const badge = document.getElementById('cloud-status-badge');
+            const icon = document.getElementById('cloud-icon');
+            const text = document.getElementById('cloud-text');
+            if (online) {
+                icon.className = "fa-solid fa-cloud text-emerald-400 animate-pulse";
+                text.textContent = "Cloud Synced";
+                badge.className = "px-2.5 py-1.5 bg-emerald-950/40 border border-emerald-500/40 rounded-lg text-[11px] font-mono flex items-center gap-1.5 text-emerald-300";
+            } else {
+                icon.className = "fa-solid fa-database text-amber-400";
+                text.textContent = "Local Storage";
+                badge.className = "px-2.5 py-1.5 bg-fuji-panel border border-fuji-border rounded-lg text-[11px] font-mono flex items-center gap-1.5 text-gray-400";
+            }
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'vi' ? 'en' : 'vi';
+            localStorage.setItem('fuji_app_lang', currentLang);
+            document.getElementById('lang-text').textContent = currentLang === 'vi' ? 'TIẾNG VIỆT' : 'ENGLISH';
+            applyLanguageTranslations();
+            updateParameterMatrixDisplay();
+        }
+
+        function applyLanguageTranslations() {
+            const langData = i18n[currentLang];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (langData[key]) el.textContent = langData[key];
+            });
+            document.getElementById('lang-text').textContent = currentLang === 'vi' ? 'TIẾNG VIỆT' : 'ENGLISH';
+        }
+
+        function switchMainTab(tabName) {
+            ['editor', 'ocr', 'library'].forEach(t => {
+                const sec = document.getElementById(`section-${t}`);
+                const navBtn = document.getElementById(`nav-${t}-btn`);
+                if (t === tabName) {
+                    sec.classList.remove('hidden');
+                    if (navBtn) navBtn.className = "flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-white bg-fuji-border";
+                } else {
+                    sec.classList.add('hidden');
+                    if (navBtn) navBtn.className = "flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition";
+                }
+            });
+        }
+
+        function populatePresetDropdown() {
+            const select = document.getElementById('preset-select');
+            select.innerHTML = '';
+            recipeLibrary.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = `[${r.brand || 'Fuji'}] ${r.name} (${r.filmSim})`;
+                select.appendChild(opt);
+            });
+            select.value = currentRecipe.id;
+        }
+
+        function loadPresetById(id) {
+            const found = recipeLibrary.find(r => r.id === id);
+            if (found) {
+                currentRecipe = { ...found };
+                updateControlsUIFromRecipe();
+                renderCanvasEngine();
+            }
+        }
+
+        function updateBrandSystem(brandName) {
+            currentRecipe.brand = brandName;
+            document.getElementById('val-brand').textContent = brandName;
+            updateParameterMatrixDisplay();
+        }
+
+        function updateParam(paramKey, value) {
+            currentRecipe[paramKey] = value;
+            const valLabel = document.getElementById(`val-${paramKey}`);
+            if (valLabel) {
+                valLabel.textContent = (typeof value === 'number' && value > 0) ? `+${value}` : value;
+            }
+            updateParameterMatrixDisplay();
+            renderCanvasEngine();
+        }
+
+        function updateControlsUIFromRecipe() {
+            document.getElementById('recipe-badge').textContent = `${currentRecipe.name}`;
+            document.getElementById('preset-select').value = currentRecipe.id;
+            
+            if (document.getElementById('param-brand')) {
+                document.getElementById('param-brand').value = currentRecipe.brand || 'Fujifilm';
+                document.getElementById('val-brand').textContent = currentRecipe.brand || 'Fujifilm';
+            }
+
+            const fields = ['filmSim', 'wbRed', 'wbBlue', 'highlight', 'shadow', 'color', 'grain', 'colorFxBlue', 'sharpness', 'denoise'];
+            fields.forEach(f => {
+                const input = document.getElementById(`param-${f}`);
+                if (input) input.value = currentRecipe[f];
+                const label = document.getElementById(`val-${f}`);
+                if (label) {
+                    let v = currentRecipe[f];
+                    label.textContent = (typeof v === 'number' && v > 0) ? `+${v}` : v;
+                }
+            });
+
+            updateParameterMatrixDisplay();
+        }
+
+        function updateParameterMatrixDisplay() {
+            const r = currentRecipe;
+            const rShift = r.wbRed * 4;
+            const bShift = r.wbBlue * 4;
+            const contrast = (1 + (r.highlight * 0.08) - (r.shadow * 0.06)).toFixed(2);
+            const sat = Math.round((1 + (r.color * 0.08)) * 100);
+
+            document.getElementById('parameter-matrix-info').innerHTML = `
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                    <div><span class="text-gray-400">Brand/Profile:</span> <b class="text-fuji-red">${r.brand || 'Fuji'} / ${r.filmSim}</b></div>
+                    <div><span class="text-gray-400">RGB Shift:</span> <b class="text-white">R:${rShift > 0 ? '+'+rShift : rShift} / B:${bShift > 0 ? '+'+bShift : bShift}</b></div>
+                    <div><span class="text-gray-400">Contrast:</span> <b class="text-white">${contrast}x</b></div>
+                    <div><span class="text-gray-400">Saturation:</span> <b class="text-white">${sat}%</b></div>
+                </div>
+            `;
+        }
+
+        function resetParametersToDefault() {
+            currentRecipe = { ...DEFAULT_RECIPES[0] };
+            updateControlsUIFromRecipe();
+            renderCanvasEngine();
+        }
+
+        function loadDefaultSamplePhoto() {
+            showCanvasLoader(true);
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80';
+            img.onload = function() {
+                originalImage = img;
+                renderCanvasEngine();
+                showCanvasLoader(false);
+            };
+            img.onerror = function() {
+                generateProceduralSamplePhoto();
+            };
+        }
+
+        function generateProceduralSamplePhoto() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1000;
+            canvas.height = 667;
+            const c = canvas.getContext('2d');
+            
+            const grad = c.createLinearGradient(0, 0, 0, 667);
+            grad.addColorStop(0, '#1e3c72');
+            grad.addColorStop(0.5, '#2a5298');
+            grad.addColorStop(1, '#228b22');
+            c.fillStyle = grad;
+            c.fillRect(0, 0, 1000, 667);
+
+            c.fillStyle = '#ff8c00';
+            c.beginPath();
+            c.arc(500, 260, 100, 0, Math.PI * 2);
+            c.fill();
+
+            const fallbackImg = new Image();
+            fallbackImg.src = canvas.toDataURL();
+            fallbackImg.onload = function() {
+                originalImage = fallbackImg;
+                renderCanvasEngine();
+                showCanvasLoader(false);
+            };
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            showCanvasLoader(true);
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const img = new Image();
+                img.onload = function() {
+                    originalImage = img;
+                    renderCanvasEngine();
+                    showCanvasLoader(false);
+                };
+                img.src = evt.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function renderCanvasEngine() {
+            if (!originalImage || !mainCanvas) return;
+
+            const maxDim = 1200;
+            let w = originalImage.width;
+            let h = originalImage.height;
+
+            if (w > maxDim || h > maxDim) {
+                if (w > h) {
+                    h = Math.round((h * maxDim) / w);
+                    w = maxDim;
+                } else {
+                    w = Math.round((w * maxDim) / h);
+                    h = maxDim;
+                }
+            }
+
+            mainCanvas.width = w;
+            mainCanvas.height = h;
+
+            if (compareMode === 'original') {
+                ctx.drawImage(originalImage, 0, 0, w, h);
+                return;
+            }
+
+            ctx.drawImage(originalImage, 0, 0, w, h);
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const d = imgData.data;
+            const r = currentRecipe;
+
+            const rShift = r.wbRed * 3.8;
+            const bShift = r.wbBlue * 3.8;
+            const satFactor = 1 + (r.color * 0.08);
+            const highlightAdj = r.highlight * 14;
+            const shadowAdj = r.shadow * 12;
+
+            let simMatrix = { rMult: 1.0, gMult: 1.0, bMult: 1.0, contrast: 1.0, desat: 0.0 };
+            
+            switch (r.filmSim) {
+                case 'Classic Neg.':
+                    simMatrix = { rMult: 1.06, gMult: 0.95, bMult: 0.91, contrast: 1.18, desat: 0.05 };
+                    break;
+                case 'Classic Chrome':
+                    simMatrix = { rMult: 0.97, gMult: 0.97, bMult: 0.94, contrast: 1.10, desat: 0.22 };
+                    break;
+                case 'Nostalgic Neg.':
+                    simMatrix = { rMult: 1.09, gMult: 1.02, bMult: 0.86, contrast: 0.96, desat: 0.0 };
+                    break;
+                case 'Ricoh Positive Film':
+                    simMatrix = { rMult: 1.12, gMult: 1.04, bMult: 0.88, contrast: 1.20, desat: -0.1 };
+                    break;
+                case 'ACROS':
+                case 'Leica Monochrome':
+                    simMatrix = { rMult: 1.0, gMult: 1.0, bMult: 1.0, contrast: 1.25, desat: 1.0 };
+                    break;
+            }
+
+            for (let i = 0; i < d.length; i += 4) {
+                let red = d[i] * simMatrix.rMult + rShift;
+                let green = d[i + 1] * simMatrix.gMult;
+                let blue = d[i + 2] * simMatrix.bMult + bShift;
+
+                const luma = 0.299 * red + 0.587 * green + 0.114 * blue;
+                if (luma > 150) {
+                    const factor = (luma - 150) / 105;
+                    red += highlightAdj * factor;
+                    green += highlightAdj * factor;
+                    blue += highlightAdj * factor;
+                } else if (luma < 100) {
+                    const factor = (100 - luma) / 100;
+                    red += shadowAdj * factor;
+                    green += shadowAdj * factor;
+                    blue += shadowAdj * factor;
+                }
+
+                if (simMatrix.contrast !== 1.0) {
+                    red = ((red / 255 - 0.5) * simMatrix.contrast + 0.5) * 255;
+                    green = ((green / 255 - 0.5) * simMatrix.contrast + 0.5) * 255;
+                    blue = ((blue / 255 - 0.5) * simMatrix.contrast + 0.5) * 255;
+                }
+
+                const gray = 0.299 * red + 0.587 * green + 0.114 * blue;
+                if (simMatrix.desat === 1.0) {
+                    red = green = blue = gray;
+                } else {
+                    const effSat = satFactor * (1 - simMatrix.desat);
+                    red = gray + (red - gray) * effSat;
+                    green = gray + (green - gray) * effSat;
+                    blue = gray + (blue - gray) * effSat;
+                }
+
+                d[i]     = Math.min(255, Math.max(0, red));
+                d[i + 1] = Math.min(255, Math.max(0, green));
+                d[i + 2] = Math.min(255, Math.max(0, blue));
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+
+            if (r.grain !== 'Off') {
+                const intensity = r.grain === 'Strong' ? 22 : 11;
+                const gData = ctx.getImageData(0, 0, w, h);
+                const gPx = gData.data;
+                for (let i = 0; i < gPx.length; i += 4) {
+                    const noise = (Math.random() - 0.5) * intensity;
+                    gPx[i] = Math.min(255, Math.max(0, gPx[i] + noise));
+                    gPx[i+1] = Math.min(255, Math.max(0, gPx[i+1] + noise));
+                    gPx[i+2] = Math.min(255, Math.max(0, gPx[i+2] + noise));
+                }
+                ctx.putImageData(gData, 0, 0);
+            }
+
+            if (compareMode === 'split') {
+                renderSplitOverlayView(w, h);
+            }
+        }
+
+        function renderSplitOverlayView(w, h) {
+            const splitX = Math.round(w * splitRatio);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, splitX, h);
+            ctx.clip();
+            ctx.drawImage(originalImage, 0, 0, w, h);
+            ctx.restore();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(splitX, 0);
+            ctx.lineTo(splitX, h);
+            ctx.stroke();
+        }
+
+        function setupSplitDragControls() {
+            const bar = document.getElementById('split-drag-handle');
+            const wrapper = document.getElementById('canvas-wrapper');
+            let dragging = false;
+
+            const onMove = (e) => {
+                if (!dragging || compareMode !== 'split') return;
+                const rect = wrapper.getBoundingClientRect();
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                if (!clientX) return;
+                const x = clientX - rect.left;
+                splitRatio = Math.max(0.05, Math.min(0.95, x / rect.width));
+                bar.style.left = `${splitRatio * 100}%`;
+                renderCanvasEngine();
+            };
+
+            bar.addEventListener('mousedown', () => dragging = true);
+            bar.addEventListener('touchstart', () => dragging = true);
+            window.addEventListener('mouseup', () => dragging = false);
+            window.addEventListener('touchend', () => dragging = false);
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('touchmove', onMove);
+        }
+
+        function setCompareMode(mode) {
+            compareMode = mode;
+            const splitOverlay = document.getElementById('split-overlay');
+            ['processed', 'split', 'original'].forEach(m => {
+                const btn = document.getElementById(`view-${m}-btn`);
+                if (m === mode) btn.className = "px-3 py-1 rounded-md text-white bg-fuji-border font-medium transition";
+                else btn.className = "px-3 py-1 rounded-md text-gray-400 hover:text-white font-medium transition";
+            });
+            if (mode === 'split') splitOverlay.classList.remove('hidden');
+            else splitOverlay.classList.add('hidden');
+            renderCanvasEngine();
+        }
+
+        function downloadRenderedImage() {
+            if (!mainCanvas) return;
+            const a = document.createElement('a');
+            a.download = `${currentRecipe.name.toLowerCase().replace(/\s+/g, '-')}-edited-photo.png`;
+            a.href = mainCanvas.toDataURL('image/png');
+            a.click();
+        }
+
+        function renderLibraryGrid() {
+            const grid = document.getElementById('library-cards-grid');
+            grid.innerHTML = '';
+
+            recipeLibrary.forEach(r => {
+                const card = document.createElement('div');
+                card.className = "glass-panel p-5 rounded-2xl border border-fuji-border hover:border-fuji-red/50 transition flex flex-col justify-between space-y-4 shadow-lg";
+                card.innerHTML = `
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-0.5 rounded-full bg-fuji-red/15 border border-fuji-red/30 text-fuji-red font-mono text-[11px] font-bold">
+                                ${r.brand || 'Fuji'} • ${r.filmSim}
+                            </span>
+                            <button onclick="promptDeleteRecipe('${r.id}', '${r.name}')" class="text-xs text-gray-500 hover:text-red-400 p-1 transition" title="Delete Recipe">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                        <h3 class="text-base font-bold text-white leading-tight">${r.name}</h3>
+                        <p class="text-xs text-gray-400 font-mono">${r.sensor || 'Custom Camera Recipe'}</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 text-xs font-mono bg-fuji-dark/80 p-3 rounded-xl border border-fuji-border/50 text-gray-300">
+                        <div><span class="text-gray-500">WB:</span> R:${r.wbRed}/B:${r.wbBlue}</div>
+                        <div><span class="text-gray-500">Color:</span> ${r.color > 0 ? '+'+r.color : r.color}</div>
+                        <div><span class="text-gray-500">H/S:</span> ${r.highlight}/${r.shadow}</div>
+                        <div><span class="text-gray-500">Grain:</span> ${r.grain}</div>
+                    </div>
+
+                    <button onclick="loadRecipeFromLibrary('${r.id}')" class="w-full py-2.5 bg-fuji-border hover:bg-fuji-red text-white text-xs font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow">
+                        <i class="fa-solid fa-sliders"></i> Load into Studio
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function loadRecipeFromLibrary(id) {
+            const found = recipeLibrary.find(r => r.id === id);
+            if (found) {
+                currentRecipe = { ...found };
+                updateControlsUIFromRecipe();
+                switchMainTab('editor');
+                renderCanvasEngine();
+            }
+        }
+
+        function promptDeleteRecipe(id, name) {
+            pendingDeleteId = id;
+            document.getElementById('delete-recipe-name-text').textContent = currentLang === 'vi' 
+                ? `Bạn có chắc muốn xóa công thức "${name}"?` 
+                : `Are you sure you want to delete "${name}"?`;
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            pendingDeleteId = null;
+            document.getElementById('delete-modal').classList.add('hidden');
+        }
+
+        function confirmExecuteDelete() {
+            if (!pendingDeleteId) return;
+            const delId = pendingDeleteId;
+            recipeLibrary = recipeLibrary.filter(r => r.id !== delId);
+            saveLibraryToLocalStorage();
+            populatePresetDropdown();
+            renderLibraryGrid();
+            closeDeleteModal();
+
+            // Sync Delete to Firebase Cloud
+            if (isFirebaseActive && db) {
+                db.collection("recipes").doc(delId).delete().catch(e => console.log("Cloud delete queued offline:", e));
+            }
+        }
+
+        function saveLibraryToLocalStorage() {
+            localStorage.setItem('fuji_custom_recipes', JSON.stringify(recipeLibrary));
+        }
+
+        function openSaveModal() {
+            document.getElementById('modal-recipe-name').value = `${currentRecipe.name} Copy`;
+            document.getElementById('save-modal').classList.remove('hidden');
+        }
+
+        function closeSaveModal() {
+            document.getElementById('save-modal').classList.add('hidden');
+        }
+
+        function confirmSaveRecipe() {
+            const name = document.getElementById('modal-recipe-name').value.trim() || 'Custom Recipe';
+            const desc = document.getElementById('modal-recipe-desc').value.trim() || 'Camera Preset';
+
+            const newId = 'custom-' + Date.now();
+            const newRecipe = {
+                ...currentRecipe,
+                id: newId,
+                name: name,
+                sensor: desc
+            };
+
+            recipeLibrary.push(newRecipe);
+            saveLibraryToLocalStorage();
+            populatePresetDropdown();
+            renderLibraryGrid();
+            closeSaveModal();
+
+            // Sync Save to Firebase Cloud
+            if (isFirebaseActive && db) {
+                db.collection("recipes").doc(newId).set(newRecipe).catch(e => console.log("Cloud save queued offline:", e));
+            }
+
+            loadPresetById(newRecipe.id);
+        }
+
+        function createNewBlankRecipe() {
+            currentRecipe = {
+                id: 'custom-' + Date.now(),
+                name: 'New Custom Recipe',
+                brand: 'Fujifilm',
+                sensor: 'Camera Sensor',
+                filmSim: 'Classic Chrome',
+                wbRed: 0,
+                wbBlue: 0,
+                grain: 'Off',
+                colorFx: 'Off',
+                colorFxBlue: 'Off',
+                dynamicRange: 'DR100',
+                highlight: 0,
+                shadow: 0,
+                color: 0,
+                sharpness: 0,
+                denoise: 0
+            };
+            updateControlsUIFromRecipe();
+            switchMainTab('editor');
+            renderCanvasEngine();
+        }
+
+        function showCanvasLoader(show) {
+            const loader = document.getElementById('canvas-loader');
+            if (show) loader.classList.remove('hidden');
+            else loader.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
