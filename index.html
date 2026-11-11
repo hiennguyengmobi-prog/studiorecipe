@@ -43,6 +43,10 @@
         }
     </script>
     <style>
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
         * { touch-action: manipulation; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #0F1015; }
@@ -79,51 +83,72 @@
 
     <!-- Top Navigation Header -->
     <header class="border-b border-fuji-border bg-fuji-card/95 sticky top-0 z-40 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-14 sm:h-16">
-                <!-- Logo & Brand -->
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-fuji-red flex items-center justify-center font-bold text-white shadow-lg shadow-fuji-red/20 text-base sm:text-lg tracking-wider">
-                        CAM
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14 sm:h-16 gap-2">
+                
+                <!-- 1. LEFT SIDE: Hamburger (Mobile) & Logo + Title (Desktop) -->
+                <div class="flex items-center gap-3 z-10 shrink-0">
+                    <!-- Nút Hamburger Icon vuông bo góc (Chỉ hiện trên Mobile) -->
+                    <button onclick="toggleMobileNav(true)" class="sm:hidden w-10 h-10 rounded-xl bg-fuji-dark border border-fuji-border text-white hover:text-fuji-red flex items-center justify-center transition shrink-0 active:scale-95 shadow-sm">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+
+                    <!-- Logo & Title (Hiện bên trái trên Desktop, ẩn trên Mobile) -->
+                    <div class="hidden sm:flex items-center gap-2.5">
+                        <div class="w-10 h-10 rounded-xl bg-fuji-red flex items-center justify-center font-bold text-white shadow-lg shadow-fuji-red/20 text-lg tracking-wider shrink-0">
+                            CAM
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-white tracking-wide text-sm sm:text-base leading-none">Recipe Studio</h1>
+                            <span class="text-[10px] sm:text-xs text-gray-400 font-mono">Cloud Sync Edition</span>
+                        </div>
                     </div>
-                    <div>
-                        <h1 class="font-bold text-white tracking-wide text-sm sm:text-base leading-none">Recipe Studio</h1>
-                        <span class="text-[10px] sm:text-xs text-gray-400 font-mono">Cloud Sync Edition</span>
+
+                    <!-- Logo đơn giản chính giữa (Chỉ hiện trên Mobile) -->
+                    <div class="absolute left-1/2 -translate-x-1/2 sm:hidden flex items-center">
+                        <div class="w-9 h-9 rounded-xl bg-fuji-red flex items-center justify-center font-bold text-white shadow-lg shadow-fuji-red/20 text-base tracking-wider">
+                            CAM
+                        </div>
                     </div>
                 </div>
 
-                <!-- Center Nav Desktop Tabs -->
-                <nav class="hidden md:flex items-center space-x-1 bg-fuji-dark p-1 rounded-xl border border-fuji-border">
-                    <button id="nav-editor-btn" onclick="switchMainTab('editor')" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition text-white bg-fuji-border">
+                <!-- 2. CENTER: Thanh Menu điều hướng các tab (Chỉ hiện trên Desktop) -->
+                <nav class="hidden md:flex items-center gap-1 bg-fuji-dark p-1 rounded-xl border border-fuji-border mx-2">
+                    <button id="nav-editor-btn" onclick="switchMainTab('editor')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition text-white bg-fuji-border">
                         <i class="fa-solid fa-sliders"></i> <span data-i18n="tabEditor">Studio Editor</span>
                     </button>
-                    <button id="nav-cmatch-btn" onclick="switchMainTab('cmatch')" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
+                    <button id="nav-cmatch-btn" onclick="switchMainTab('cmatch')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
                         <i class="fa-solid fa-wand-magic-sparkles text-fuji-gold"></i> <span data-i18n="tabColorMatch">Color Match</span>
                     </button>
-                    <button id="nav-ocr-btn" onclick="switchMainTab('ocr')" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
+                    <button id="nav-ocr-btn" onclick="switchMainTab('ocr')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
                         <i class="fa-solid fa-camera font-bold text-fuji-red"></i> <span data-i18n="tabOcr">Scan Recipe</span>
                     </button>
-                    <button id="nav-library-btn" onclick="switchMainTab('library')" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
+                    <button id="nav-library-btn" onclick="switchMainTab('library')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition">
                         <i class="fa-solid fa-bookmark"></i> <span data-i18n="tabLibrary">Library</span>
                     </button>
                 </nav>
 
-                <!-- Cloud Sync Status & Language Switcher -->
-                <div class="flex items-center gap-2 sm:gap-3">
-                    <!-- Firebase Status Badge -->
-                    <div id="cloud-status-badge" class="px-2.5 py-1.5 bg-fuji-panel border border-fuji-border rounded-lg text-[11px] font-mono flex items-center gap-1.5 text-gray-400">
-                        <i class="fa-solid fa-cloud text-gray-500" id="cloud-icon"></i>
-                        <span id="cloud-text" class="hidden sm:inline">Offline Mode</span>
+                <!-- 3. RIGHT SIDE: Cloud Status, Lang & Export (Đồng bộ kích thước vuông bo góc chuẩn) -->
+                <div class="flex items-center gap-2 z-10 shrink-0">
+                    <!-- Cloud Status: Trên mobile w-10 h-10 vuông vắn chỉ có icon, trên desktop sm:w-auto sm:px-3 hiện đầy đủ text -->
+                    <div id="cloud-status-badge" class="w-10 h-10 sm:w-auto sm:h-9 px-0 sm:px-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-[12px] font-mono flex items-center justify-center gap-1.5 text-emerald-300 shadow-sm">
+                        <i class="fa-solid fa-cloud text-emerald-400 animate-pulse text-[22px] sm:text-base" id="cloud-icon"></i>
+                        <span id="cloud-text" class="hidden sm:inline">Cloud Synced</span>
                     </div>
 
-                    <button id="lang-toggle-btn" onclick="toggleLanguage()" class="px-2.5 py-1.5 sm:px-3 bg-fuji-panel hover:bg-fuji-border border border-fuji-border text-xs font-semibold rounded-lg text-white transition flex items-center gap-1.5 shadow-sm">
-                        <i class="fa-solid fa-globe text-fuji-red"></i> <span id="lang-text">TIẾNG VIỆT</span>
+                    <!-- Toggle Language Button -->
+                    <button id="lang-toggle-btn" onclick="toggleLanguage()" class="w-10 h-10 sm:w-auto sm:h-9 px-0 sm:px-3 bg-fuji-panel hover:bg-fuji-border border border-fuji-border text-xs font-semibold rounded-xl text-white transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95">
+                        <i class="fa-solid fa-globe text-fuji-red text-base"></i> 
+                        <span id="lang-text" class="hidden sm:inline">TIẾNG VIỆT</span>
                     </button>
 
-                    <button onclick="downloadRenderedImage()" class="px-3 py-1.5 bg-fuji-red hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shadow-md shadow-fuji-red/20">
-                        <i class="fa-solid fa-download"></i> <span class="hidden sm:inline" data-i18n="export">Export HD</span>
+                    <!-- Export HD Button -->
+                    <button onclick="downloadRenderedImage()" class="w-10 h-10 sm:w-auto sm:h-9 px-0 sm:px-3.5 bg-fuji-red hover:bg-red-600 text-white text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-fuji-red/20 active:scale-95">
+                        <i class="fa-solid fa-download text-base"></i> 
+                        <span class="hidden sm:inline" data-i18n="export">Export HD</span>
                     </button>
                 </div>
+
             </div>
         </div>
     </header>
@@ -158,7 +183,7 @@
 
                 <div class="glass-panel flex-1 rounded-2xl p-2 relative overflow-hidden flex items-center justify-center min-h-[350px] lg:min-h-[480px] bg-black/50 border border-fuji-border" id="canvas-wrapper">
                     <div class="relative max-w-full max-h-[600px] flex items-center justify-center overflow-hidden rounded-xl">
-                        <canvas id="main-canvas" class="max-w-full max-h-[560px] object-contain shadow-2xl rounded-lg"></canvas>
+                        <canvas id="main-canvas" onclick="openProcessedImageInNewTab()" class="max-w-full max-h-[560px] object-contain shadow-2xl rounded-lg cursor-pointer" title="Bấm để mở ảnh đã áp dụng preset trong tab mới"></canvas>
                         
                         <div id="split-overlay" class="absolute inset-0 pointer-events-none hidden">
                             <div id="split-drag-handle" class="absolute top-0 bottom-0 w-0.5 bg-white shadow-2xl pointer-events-auto cursor-ew-resize flex items-center justify-center" style="left: 50%;">
@@ -206,7 +231,7 @@
                     </select>
                 </div>
 
-                <div class="glass-panel p-4 sm:p-5 rounded-2xl space-y-4 flex-1 overflow-y-auto" id="controls-scroll-panel">
+                <div class="glass-panel p-4 sm:p-5 rounded-2xl space-y-4 flex-1 overflow-y-auto max-h-[580px]" id="controls-scroll-panel">
                     
                     <div class="flex items-center justify-between border-b border-fuji-border pb-2.5">
                         <h3 class="font-bold text-white text-xs sm:text-sm flex items-center gap-2">
@@ -752,14 +777,15 @@
             const badge = document.getElementById('cloud-status-badge');
             const icon = document.getElementById('cloud-icon');
             const text = document.getElementById('cloud-text');
+            
             if (online) {
-                icon.className = "fa-solid fa-cloud text-emerald-400 animate-pulse";
-                text.textContent = "Cloud Synced";
-                badge.className = "px-2.5 py-1.5 bg-emerald-950/40 border border-emerald-500/40 rounded-lg text-[11px] font-mono flex items-center gap-1.5 text-emerald-300";
+                icon.className = "fa-solid fa-cloud text-emerald-400 animate-pulse text-[22px] sm:text-base";
+                if (text) text.textContent = "Cloud Synced";
+                badge.className = "w-10 h-10 sm:w-auto sm:h-9 px-0 sm:px-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-[12px] font-mono flex items-center justify-center gap-1.5 text-emerald-300 shadow-sm";
             } else {
-                icon.className = "fa-solid fa-database text-amber-400";
-                text.textContent = "Local Storage";
-                badge.className = "px-2.5 py-1.5 bg-fuji-panel border border-fuji-border rounded-lg text-[11px] font-mono flex items-center gap-1.5 text-gray-400";
+                icon.className = "fa-solid fa-database text-amber-400 text-[22px] sm:text-base";
+                if (text) text.textContent = "Local Storage";
+                badge.className = "w-10 h-10 sm:w-auto sm:h-9 px-0 sm:px-3 bg-fuji-panel border border-fuji-border rounded-xl text-[12px] font-mono flex items-center justify-center gap-1.5 text-gray-400 shadow-sm";
             }
         }
 
@@ -1106,12 +1132,61 @@
             renderCanvasEngine();
         }
 
-        function downloadRenderedImage() {
+        async function downloadRenderedImage() {
             if (!mainCanvas) return;
-            const a = document.createElement('a');
-            a.download = `${currentRecipe.name.toLowerCase().replace(/\s+/g, '-')}-edited-photo.png`;
-            a.href = mainCanvas.toDataURL('image/png');
-            a.click();
+            
+            // Chuyển canvas thành dạng Blob (PNG)
+            mainCanvas.toBlob(async function(blob) {
+                if (!blob) return;
+                const fileName = `${currentRecipe.name.toLowerCase().replace(/\s+/g, '-')}-edited-photo.png`;
+                const file = new File([blob], fileName, { type: 'image/png' });
+
+                // Kiểm tra nếu thiết bị hỗ trợ Web Share API (Mobile Safari/Chrome hỗ trợ cực tốt tính năng lưu vào Thư viện ảnh)
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Fuji Recipe Studio Export',
+                            text: `Edited with preset: ${currentRecipe.name}`
+                        });
+                        return;
+                    } catch (err) {
+                        if (err.name !== 'AbortError') {
+                            console.log("Web share fallback triggered:", err);
+                        } else {
+                            return; // Người dùng bấm hủy chia sẻ thì dừng lại
+                        }
+                    }
+                }
+
+                // Fallback cho Desktop hoặc trình duyệt không hỗ trợ Web Share
+                const dataUrl = mainCanvas.toDataURL('image/png');
+                
+                // Nếu là iOS Safari (không hỗ trợ Web Share), hiển thị thông báo hướng dẫn giữ ảnh lưu vào Thư viện
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                if (isIOS) {
+                    // Mở ảnh trực tiếp trong tab mới trên iOS để người dùng ấn giữ và chọn "Lưu vào Ảnh (Save to Photos)"
+                    const newWindow = window.open();
+                    if (newWindow) {
+                        newWindow.document.write(`
+                            <html>
+                                <head><title>Lưu ảnh - Fuji Studio</title></head>
+                                <body style="background:#0F1015; color:#fff; text-align:center; font-family:sans-serif; padding:20px;">
+                                    <h3>Chạm và giữ vào ảnh bên dưới, sau đó chọn "Lưu vào Ảnh" (Save Image)</h3>
+                                    <img src="${dataUrl}" style="max-width:100%; border-radius:12px; margin-top:15px; box-shadow:0 10px 25px rgba(0,0,0,0.5);" />
+                                </body>
+                            </html>
+                        `);
+                        return;
+                    }
+                }
+
+                // Fallback tiêu chuẩn cho máy tính (PC/Mac)
+                const a = document.createElement('a');
+                a.download = fileName;
+                a.href = dataUrl;
+                a.click();
+            }, 'image/png');
         }
 
         function renderLibraryGrid() {
@@ -1544,6 +1619,171 @@
             }
 
             switchMainTab('library');
+        }
+    </script>
+    <script>
+        function openProcessedImageInNewTab() {
+            if (!mainCanvas) return;
+            
+            // Lấy dữ liệu ảnh đã được render preset hiện tại trên canvas
+            const dataUrl = mainCanvas.toDataURL('image/png');
+            
+            // Mở một tab mới trên trình duyệt
+            const newTab = window.open();
+            if (newTab) {
+                newTab.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="vi">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>${currentRecipe.name} - Studio Export</title>
+                        <style>
+                            body {
+                                margin: 0;
+                                background: #0F1015;
+                                color: #fff;
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                min-height: 100vh;
+                                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                            }
+                            .container {
+                                max-width: 92vw;
+                                max-height: 85vh;
+                                text-align: center;
+                            }
+                            img {
+                                max-width: 100%;
+                                max-height: 80vh;
+                                object-contain;
+                                border-radius: 12px;
+                                box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+                                border: 1px solid rgba(255,255,255,0.1);
+                            }
+                            .info {
+                                margin-top: 15px;
+                                font-size: 14px;
+                                color: #9CA3AF;
+                            }
+                            .badge {
+                                color: #E60012;
+                                font-weight: bold;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <img src="${dataUrl}" alt="Processed Preset Photo">
+                            <div class="info">
+                                Công thức áp dụng: <span class="badge">${currentRecipe.name}</span> (${currentRecipe.filmSim})
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `);
+            } else {
+                alert("Trình duyệt của bạn đang chặn popup mở tab mới. Vui lòng cấp quyền cho trang web!");
+            }
+        }
+
+    </script>
+    <!-- MOBILE DRAWER MENU OVERLAY (Slide-in Menu) -->
+    <div id="mobile-nav-backdrop" onclick="toggleMobileNav(false)" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 transition-opacity duration-300 opacity-0 pointer-events-none sm:hidden"></div>
+
+    <aside id="mobile-nav-drawer" class="fixed top-0 left-0 bottom-0 w-[280px] bg-fuji-card border-r border-fuji-border z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col justify-between p-6 sm:hidden shadow-2xl">
+        
+        <div class="space-y-6">
+            <!-- Header Drawer: Logo & Nút Đóng -->
+            <div class="flex items-center justify-between border-b border-fuji-border pb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-fuji-red flex items-center justify-center font-bold text-white shadow-lg shadow-fuji-red/20 text-base tracking-wider">
+                        CAM
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-white tracking-wide text-sm leading-none">Recipe Studio</h2>
+                        <span class="text-[10px] text-gray-400 font-mono">Mobile Navigation</span>
+                    </div>
+                </div>
+                <button onclick="toggleMobileNav(false)" class="w-8 h-8 rounded-lg bg-fuji-dark border border-fuji-border text-gray-400 hover:text-white flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Danh sách chức năng dạng danh sách dọc chuẩn App -->
+            <nav class="space-y-2">
+                <button id="mob-nav-editor" onclick="selectMobileTab('editor')" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold rounded-xl text-white bg-fuji-border border border-fuji-border/60 transition shadow-sm">
+                    <i class="fa-solid fa-sliders text-fuji-red text-sm w-5"></i> 
+                    <span data-i18n="tabEditor">Studio Editor</span>
+                </button>
+                
+                <button id="mob-nav-cmatch" onclick="selectMobileTab('cmatch')" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl text-gray-300 hover:bg-fuji-panel transition">
+                    <i class="fa-solid fa-wand-magic-sparkles text-fuji-gold text-sm w-5"></i> 
+                    <span data-i18n="tabColorMatch">Color Match</span>
+                </button>
+                
+                <button id="mob-nav-ocr" onclick="selectMobileTab('ocr')" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl text-gray-300 hover:bg-fuji-panel transition">
+                    <i class="fa-solid fa-camera text-fuji-red text-sm w-5"></i> 
+                    <span data-i18n="tabOcr">Scan Recipe</span>
+                </button>
+                
+                <button id="mob-nav-library" onclick="selectMobileTab('library')" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl text-gray-300 hover:bg-fuji-panel transition">
+                    <i class="fa-solid fa-bookmark text-emerald-400 text-sm w-5"></i> 
+                    <span data-i18n="tabLibrary">Recipe Library</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Footer Drawer -->
+        <div class="pt-4 border-t border-fuji-border space-y-3">
+            <button onclick="toggleLanguage(); updateMobileNavActiveState(currentActiveTab);" class="w-full py-2.5 px-3 bg-fuji-dark border border-fuji-border rounded-xl text-xs font-semibold text-gray-300 flex items-center justify-between">
+                <span class="flex items-center gap-2"><i class="fa-solid fa-globe text-fuji-red"></i> Ngôn ngữ</span>
+                <span class="text-fuji-gold font-mono font-bold" id="mob-lang-text">TIẾNG VIỆT</span>
+            </button>
+            <p class="text-[10px] text-gray-500 font-mono text-center">Fuji Recipe Studio © 2026</p>
+        </div>
+    </aside>
+    <script type="text/javascript">
+        let currentActiveTab = 'editor';
+
+        // Đóng / Mở Mobile Drawer Menu
+        function toggleMobileNav(open) {
+            const drawer = document.getElementById('mobile-nav-drawer');
+            const backdrop = document.getElementById('mobile-nav-backdrop');
+            if (open) {
+                backdrop.classList.remove('pointer-events-none', 'opacity-0');
+                backdrop.classList.add('opacity-100');
+                drawer.classList.remove('-translate-x-full');
+            } else {
+                backdrop.classList.remove('opacity-100');
+                backdrop.classList.add('opacity-0', 'pointer-events-none');
+                drawer.classList.add('-translate-x-full');
+            }
+        }
+
+        // Chuyển tab từ Mobile Menu
+        function selectMobileTab(tabName) {
+            switchMainTab(tabName);
+            currentActiveTab = tabName;
+            updateMobileNavActiveState(tabName);
+            toggleMobileNav(false);
+        }
+
+        // Cập nhật trạng thái active highlight trên Mobile Menu
+        function updateMobileNavActiveState(activeTab) {
+            ['editor', 'cmatch', 'ocr', 'library'].forEach(t => {
+                const btn = document.getElementById(`mob-nav-${t}`);
+                if (btn) {
+                    if (t === activeTab) {
+                        btn.className = "w-full flex items-center gap-3 px-4 py-3 text-xs font-bold rounded-xl text-white bg-fuji-border border border-fuji-border/60 transition shadow-sm";
+                    } else {
+                        btn.className = "w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl text-gray-300 hover:bg-fuji-panel transition";
+                    }
+                }
+            });
+            const mobLang = document.getElementById('mob-lang-text');
+            if (mobLang) mobLang.textContent = currentLang === 'vi' ? 'TIẾNG VIỆT' : 'ENGLISH';
         }
     </script>
 </body>
