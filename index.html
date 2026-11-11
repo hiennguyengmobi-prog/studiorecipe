@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Camera Recipe Converter & Cloud Studio</title>
 
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/1752/1752238.png">
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -96,7 +97,7 @@
                     <!-- Logo & Title (Hiện bên trái trên Desktop, ẩn trên Mobile) -->
                     <div class="hidden sm:flex items-center gap-2.5">
                         <div class="w-10 h-10 rounded-xl bg-fuji-red flex items-center justify-center font-bold text-white shadow-lg shadow-fuji-red/20 text-lg tracking-wider shrink-0">
-                            CAM
+                            Fuji
                         </div>
                         <div>
                             <h1 class="font-bold text-white tracking-wide text-sm sm:text-base leading-none">Recipe Studio</h1>
@@ -107,7 +108,7 @@
                     <!-- Logo đơn giản chính giữa (Chỉ hiện trên Mobile) -->
                     <div class="absolute left-1/2 -translate-x-1/2 sm:hidden flex items-center">
                         <div class="w-9 h-9 rounded-xl bg-fuji-red flex items-center justify-center font-bold text-white shadow-lg shadow-fuji-red/20 text-base tracking-wider">
-                            CAM
+                            FujiCam
                         </div>
                     </div>
                 </div>
@@ -181,9 +182,10 @@
                     </div>
                 </div>
 
-                <div class="glass-panel flex-1 rounded-2xl p-2 relative overflow-hidden flex items-center justify-center min-h-[350px] lg:min-h-[480px] bg-black/50 border border-fuji-border" id="canvas-wrapper">
-                    <div class="relative max-w-full max-h-[600px] flex items-center justify-center overflow-hidden rounded-xl">
-                        <canvas id="main-canvas" onclick="openProcessedImageInNewTab()" class="max-w-full max-h-[560px] object-contain shadow-2xl rounded-lg cursor-pointer" title="Bấm để mở ảnh đã áp dụng preset trong tab mới"></canvas>
+                <!-- ĐOẠN CODE MỚI (Đã thu gọn khoảng trống đen, ôm sát khung ảnh cân đối) -->
+                <div class="glass-panel rounded-2xl relative overflow-hidden flex items-center justify-center bg-black/40 border border-fuji-border p-3 sm:p-4" id="canvas-wrapper" style="min-height: 420px;">
+                    <div class="relative w-full h-full flex items-center justify-center overflow-hidden rounded-xl">
+                        <canvas id="main-canvas" onclick="openProcessedImageInNewTab()" class="w-full h-auto max-h-[540px] object-contain shadow-2xl rounded-xl cursor-pointer" title="Bấm để mở ảnh đã áp dụng preset trong tab mới"></canvas>
                         
                         <div id="split-overlay" class="absolute inset-0 pointer-events-none hidden">
                             <div id="split-drag-handle" class="absolute top-0 bottom-0 w-0.5 bg-white shadow-2xl pointer-events-auto cursor-ew-resize flex items-center justify-center" style="left: 50%;">
@@ -1699,7 +1701,7 @@
             <div class="flex items-center justify-between border-b border-fuji-border pb-4">
                 <div class="flex items-center gap-2.5">
                     <div class="w-9 h-9 rounded-lg bg-fuji-red flex items-center justify-center font-bold text-white shadow-lg shadow-fuji-red/20 text-base tracking-wider">
-                        CAM
+                        Fuji
                     </div>
                     <div>
                         <h2 class="font-bold text-white tracking-wide text-sm leading-none">Recipe Studio</h2>
@@ -1713,22 +1715,22 @@
 
             <!-- Danh sách chức năng dạng danh sách dọc chuẩn App -->
             <nav class="space-y-2">
-                <button id="mob-nav-editor" onclick="selectMobileTab('editor')" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold rounded-xl text-white bg-fuji-border border border-fuji-border/60 transition shadow-sm">
+                <button id="mob-nav-editor" onclick="selectMobileTab('editor')" class="w-full flex items-center gap-3 px-4 py-3 text-s font-bold rounded-xl text-white bg-fuji-border border border-fuji-border/60 transition shadow-sm">
                     <i class="fa-solid fa-sliders text-fuji-red text-sm w-5"></i> 
                     <span data-i18n="tabEditor">Studio Editor</span>
                 </button>
                 
-                <button id="mob-nav-cmatch" onclick="selectMobileTab('cmatch')" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl text-gray-300 hover:bg-fuji-panel transition">
+                <button id="mob-nav-cmatch" onclick="selectMobileTab('cmatch')" class="w-full flex items-center gap-3 px-4 py-3 text-s font-semibold rounded-xl text-gray-300 hover:bg-fuji-panel transition">
                     <i class="fa-solid fa-wand-magic-sparkles text-fuji-gold text-sm w-5"></i> 
                     <span data-i18n="tabColorMatch">Color Match</span>
                 </button>
                 
-                <button id="mob-nav-ocr" onclick="selectMobileTab('ocr')" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl text-gray-300 hover:bg-fuji-panel transition">
+                <button id="mob-nav-ocr" onclick="selectMobileTab('ocr')" class="w-full flex items-center gap-3 px-4 py-3 text-s font-semibold rounded-xl text-gray-300 hover:bg-fuji-panel transition">
                     <i class="fa-solid fa-camera text-fuji-red text-sm w-5"></i> 
                     <span data-i18n="tabOcr">Scan Recipe</span>
                 </button>
                 
-                <button id="mob-nav-library" onclick="selectMobileTab('library')" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl text-gray-300 hover:bg-fuji-panel transition">
+                <button id="mob-nav-library" onclick="selectMobileTab('library')" class="w-full flex items-center gap-3 px-4 py-3 text-s font-semibold rounded-xl text-gray-300 hover:bg-fuji-panel transition">
                     <i class="fa-solid fa-bookmark text-emerald-400 text-sm w-5"></i> 
                     <span data-i18n="tabLibrary">Recipe Library</span>
                 </button>
@@ -1741,7 +1743,7 @@
                 <span class="flex items-center gap-2"><i class="fa-solid fa-globe text-fuji-red"></i> Ngôn ngữ</span>
                 <span class="text-fuji-gold font-mono font-bold" id="mob-lang-text">TIẾNG VIỆT</span>
             </button>
-            <p class="text-[10px] text-gray-500 font-mono text-center">Fuji Recipe Studio © 2026</p>
+            <p class="text-[10px] text-gray-500 font-mono text-center">Design by HienNguyen © 2026</p>
         </div>
     </aside>
     <script type="text/javascript">
